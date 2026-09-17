@@ -1,14 +1,10 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from google import genai
 import os
+import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.0.0")
-
-# Inicializar el cliente de Gemini usando la variable de entorno GEMINI_API_KEY
-# (Render se encargará de leer tu clave de forma segura)
-client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+app = FastAPI(title="Mary Autonomous AI", version="3.1.0")
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -29,7 +25,6 @@ def home():
                 --accent-neon: #06b6d4;
                 --accent-purple: #8b5cf6;
                 --text-main: #f8fafc;
-                --text-muted: #94a3b8;
             }
             body {
                 background: var(--bg-gradient);
@@ -81,15 +76,13 @@ def home():
                 background: linear-gradient(145deg, #1e293b, #0f172a);
                 border: 1px solid rgba(139, 92, 246, 0.3);
                 align-self: flex-start;
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 
-                            inset 0 1px 0 rgba(255, 255, 255, 0.1);
+                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
             }
             .user {
                 background: linear-gradient(135deg, #2563eb, #1d4ed8);
                 color: white;
                 align-self: flex-end;
-                box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.5),
-                            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.5);
             }
             pre {
                 background: #05070c;
@@ -99,7 +92,6 @@ def home():
                 overflow-x: auto;
                 font-family: 'Courier New', Courier, monospace;
                 border: 1px solid rgba(56, 189, 248, 0.2);
-                box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
             }
             .input-container {
                 background: rgba(15, 23, 42, 0.9);
@@ -112,7 +104,6 @@ def home():
                 margin: 0 auto;
                 box-sizing: border-box;
                 border-top: 2px solid rgba(139, 92, 246, 0.2);
-                box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.5);
             }
             input {
                 flex: 1;
@@ -123,12 +114,10 @@ def home():
                 color: white;
                 font-size: 1rem;
                 outline: none;
-                box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
-                transition: all 0.3s;
             }
             input:focus {
                 border-color: #8b5cf6;
-                box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 0 12px rgba(139, 92, 246, 0.4);
+                box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
             }
             button {
                 background: linear-gradient(135deg, #06b6d4, #3b82f6);
@@ -138,7 +127,6 @@ def home():
                 font-weight: bold;
                 border-radius: 12px;
                 cursor: pointer;
-                box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
             }
         </style>
     </head>
@@ -148,7 +136,7 @@ def home():
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Ya tengo mi cerebro de IA conectado. Pregúntame lo que quieras o pídeme que programe una app completa.</div>
+            <div class="msg mary">¡Hola, jefe! Cerebro reconectado con éxito. Pregúntame lo que quieras o pídeme código.</div>
         </div>
 
         <div class="input-container">
@@ -205,26 +193,25 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Falta configurar la GEMINI_API_KEY en Render")
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"Eres Mary, una agente de software autónoma y asistente de trading experta. Tu jefe te habla. Responde de forma inteligente, conversacional y redacta código funcional limpio en bloques cuando sea necesario. Instrucción: {req.instruction}"}]
+        }]
+    }
+    
     try:
-        # Prompt del sistema para definir la personalidad y capacidades de Mary
-        system_prompt = (
-            "Eres Mary, una agente de software autónoma y asistente de trading experta. "
-            "Tu creador y jefe te habla directamente. Responde de forma inteligente, conversacional, "
-            "profesional y redacta código funcional limpio (en bloques de código Markdown) cuando te pidan crear apps o scripts."
-        )
+        response = requests.post(url, json=payload)
+        res_data = response.json()
         
-        # Llamada al modelo Gemini
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=req.instruction,
-            config={
-                'system_instruction': system_prompt,
-                'temperature': 0.7,
-            }
-        )
-        
-        # Convertir texto simple o formato con saltos de línea a HTML amigable para el chat
-        ai_reply = response.text.replace("\n", "<br>")
+        # Extraer la respuesta del JSON de Google
+        ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+        ai_reply = ai_text.replace("\n", "<br>").replace("```", "<pre><code>").replace("</code></pre>", "</code></pre>")
         
         return {
             "agente": "Mary",
@@ -232,4 +219,3 @@ def build_program(req: PromptRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-        
