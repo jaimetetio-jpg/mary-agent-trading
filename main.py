@@ -6,7 +6,7 @@ import time
 import requests
 import re
 
-app = FastAPI(title="Mary Autonomous AI", version="3.7.1")
+app = FastAPI(title="Mary Autonomous AI", version="3.9.5")
 
 class ChatMessage(BaseModel):
     role: str
@@ -24,7 +24,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Smart Neural Engine</title>
+        <title>Mary - Smart Neural Engine v3.9.5</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -139,11 +139,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Autonomous Engine</h1>
+            <h1>🔮 Mary - Smart Neural Engine v3.9.5</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Memoria inteligente y núcleo optimizado activos. ¿En qué proyecto o estrategia avanzamos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo optimizado y listo. ¿En qué trabajamos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -167,7 +167,7 @@ def home():
 
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando con memoria activa...', 'mary');
+                const loadId = appendMsg('Mary procesando...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -186,7 +186,7 @@ def home():
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
-                    appendMsg('Error de comunicación con el núcleo inteligente.', 'mary');
+                    appendMsg('Error de comunicación con el núcleo.', 'mary');
                 }
             }
 
@@ -212,24 +212,23 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # URL exacta y original que sí te funcionaba sin errores de modelo
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
+    # URL apuntando estrictamente al modelo oficial gemini-1.5-flash y v1beta
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
-        "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
-        "Posees un razonamiento avanzado, alta capacidad de análisis técnico y destreza en programación web y Python. "
+        "Eres Mary, una agente de software autónoma de élite y asistente de construcción y trading experta. "
+        "Posees un razonamiento avanzado, alta capacidad de cálculo técnico, diseño de estructuras (como PVC, drywall) y programación. "
         "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
     )
     
     contents = []
-    
     contents.append({
         "role": "user",
         "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
     })
     contents.append({
         "role": "model",
-        "parts": [{"text": "Entendido, jefe. Mantendré un perfil inteligente, técnico, directo y con memoria activa de nuestra sesión."}]
+        "parts": [{"text": "Entendido, jefe. Operando con máxima eficiencia y memoria activa."}]
     })
 
     for msg in req.history:
@@ -244,8 +243,9 @@ def build_program(req: PromptRequest):
         "contents": contents
     }
     
+    # Sistema de reintentos inteligentes para evitar bloqueos por saturación momentánea
     max_retries = 3
-    backoff_factor = 2
+    backoff_base = 2
 
     for attempt in range(max_retries):
         try:
@@ -254,18 +254,19 @@ def build_program(req: PromptRequest):
             
             if "error" in res_data:
                 error_msg = res_data["error"].get("message", "Error desconocido de API")
-                if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
+                # Si la cuota o tráfico satura momentáneamente, reintentamos de forma inteligente
+                if any(x in error_msg.lower() for x in ["resourceexhausted", "quota", "high demand", "429", "overloaded"]):
                     if attempt < max_retries - 1:
-                        time.sleep(backoff_factor ** (attempt + 1))
+                        time.sleep(backoff_base ** attempt)
                         continue
-                return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
+                return {"agente": "Mary", "respuesta_ia": f"⚠️ Nota de sistema: {error_msg}. Por favor, reintenta en un momento."}
             
             if "candidates" in res_data and len(res_data["candidates"]) > 0:
                 ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
             else:
-                ai_text = f"Respuesta inesperada de Google: {str(res_data)}"
+                ai_text = f"Respuesta inesperada: {str(res_data)}"
                 
-            # Procesamiento limpio y seguro para los bloques de código y saltos de línea
+            # Procesamiento visual limpio para código y saltos de línea
             ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             ai_reply = ai_reply.replace("\n", "<br>")
             ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
@@ -277,8 +278,8 @@ def build_program(req: PromptRequest):
             }
         except Exception as e:
             if attempt < max_retries - 1:
-                time.sleep(backoff_factor ** (attempt + 1))
+                time.sleep(backoff_base ** attempt)
                 continue
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor tras {max_retries} intentos: {str(e)}"}
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de conexión: {str(e)}"}
     
-    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor de Google está saturado temporalmente. Por favor, intenta de nuevo en unos segundos."}
+    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor está ocupado. Intenta de nuevo en unos segundos."}
