@@ -1,7 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-import os
 import requests
 import re
 
@@ -200,9 +199,8 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
-    api_key = os.environ.get("KIMI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la KIMI_API_KEY en Render."}
+    # API Key insertada de forma directa para evitar fallos de lectura en Render
+    api_key = "sk-r95hjSAMuoEJySjUPVsmV63EL0Yc8amx8G5qYYKl1ORqG2wP"
     
     url = "https://api.moonshot.cn/v1/chat/completions"
     
