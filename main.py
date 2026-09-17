@@ -22,6 +22,15 @@ def init_db():
             )
         ''')
         conn.commit()
+        
+        # Asegurar saludo inicial automático si la BD está totalmente vacía
+        cursor.execute("SELECT COUNT(*) FROM history")
+        count = cursor.fetchone()[0]
+        if count == 0:
+            greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?"
+            cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", greeting))
+            conn.commit()
+            
         conn.close()
     except Exception as e:
         print(f"Error inicializando BD: {e}")
@@ -217,7 +226,6 @@ def home():
                 padding-left: 5px;
                 display: none;
             }
-            /* Modal de Historial */
             #historyModal {
                 display: none;
                 position: fixed;
@@ -316,11 +324,10 @@ def home():
                     📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
                 </label>
                 <input type="text" id="userInput" placeholder="Escribe tu instrucción o pregunta..." autofocus>
-                <button class="send-btn" onclick="send()">Enviar</button>
+                <button class="send-btn" id="sendButton">Enviar</button>
             </div>
         </div>
 
-        <!-- Modal de Historial -->
         <div id="historyModal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -344,19 +351,26 @@ def home():
             const fileNameDisplay = document.getElementById('fileNameDisplay');
             const historyModal = document.getElementById('historyModal');
             const modalHistoryBody = document.getElementById('modalHistoryBody');
+            const sendButton = document.getElementById('sendButton');
 
-            input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
+            input.addEventListener('keypress', (e) => { 
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    send();
+                }
+            });
+
+            sendButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                send();
+            });
 
             async function loadHistory() {
                 try {
                     const res = await fetch('/history');
                     const data = await res.json();
                     chat.innerHTML = '';
-                    if (!data.history || data.history.length === 0) {
-                        // Si está vacío, le pedimos al backend que guarde el saludo inicial en SQLite
-                        await fetch('/init-greet', { method: 'POST' });
-                        loadHistory(); // Recargamos para pintarlo desde la BD
-                    } else {
+                    if (data.history && data.history.length > 0) {
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
                         });
@@ -430,16 +444,18 @@ def home():
                     });
                     const data = await res.json();
                     
-                    document.getElementById(loadId).remove();
-                    const replyText = data.respuesta_ia || "Error de respuesta.";
+                    const loadElement = document.getElementById(loadId);
+                    if (loadElement) loadElement.remove();
                     
+                    const replyText = data.respuesta_ia || "Error de respuesta.";
                     appendMsg(replyText, 'mary', true);
                     
                     fileInput.value = '';
                     fileNameDisplay.style.display = 'none';
 
                 } catch (err) {
-                    document.getElementById(loadId).remove();
+                    const loadElement = document.getElementById(loadId);
+                    if (loadElement) loadElement.remove();
                     appendMsg('Error de comunicación con el núcleo.', 'mary');
                 }
             }
@@ -455,7 +471,7 @@ def home():
             function appendMsg(html, sender, isHtml = false) {
                 const div = document.createElement('div');
                 div.className = `msg ${sender}`;
-                const id = 'msg-' + Math.random();
+                const id = 'msg-' + Math.random().toString(36).substring(2, 9);
                 div.id = id;
                 if (isHtml) div.innerHTML = html;
                 else div.textContent = html;
@@ -474,15 +490,12 @@ def home():
 def get_history():
     return {"history": get_db_history()}
 
-@app.post("/init-greet")
-def init_greet():
-    greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?"
-    save_to_db("assistant", greeting)
-    return {"status": "initialized"}
-
 @app.post("/clear")
 def clear_history():
     clear_db_history()
+    # Volver a insertar saludo al limpiar
+    greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?"
+    save_to_db("assistant", greeting)
     return {"status": "success"}
 
 @app.post("/build")
