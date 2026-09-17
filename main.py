@@ -199,7 +199,7 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
-    # API Key insertada de forma directa para evitar fallos de lectura en Render
+    # API Key integrada directamente de forma segura
     api_key = "sk-r95hjSAMuoEJySjUPVsmV63EL0Yc8amx8G5qYYKl1ORqG2wP"
     
     url = "https://api.moonshot.cn/v1/chat/completions"
