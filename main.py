@@ -1,8 +1,14 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
+from google import genai
+import os
 
-app = FastAPI(title="Mary Agent - 3D Modern", version="2.5.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.0.0")
+
+# Inicializar el cliente de Gemini usando la variable de entorno GEMINI_API_KEY
+# (Render se encargará de leer tu clave de forma segura)
+client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -16,11 +22,10 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - 3D Cyberpunk GUI</title>
+        <title>Mary - 3D AI Neural Engine</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
-                --panel-bg: rgba(30, 41, 59, 0.7);
                 --accent-neon: #06b6d4;
                 --accent-purple: #8b5cf6;
                 --text-main: #f8fafc;
@@ -71,8 +76,6 @@ def home():
                 max-width: 85%;
                 word-break: break-word;
                 line-height: 1.5;
-                position: relative;
-                transition: transform 0.2s ease;
             }
             .mary {
                 background: linear-gradient(145deg, #1e293b, #0f172a);
@@ -120,7 +123,7 @@ def home():
                 color: white;
                 font-size: 1rem;
                 outline: none;
-                box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.05);
+                box-shadow: inset 0 2px 4px rgba(0,0,0,0.6);
                 transition: all 0.3s;
             }
             input:focus {
@@ -135,27 +138,21 @@ def home():
                 font-weight: bold;
                 border-radius: 12px;
                 cursor: pointer;
-                box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4),
-                            inset 0 1px 0 rgba(255,255,255,0.4);
-                transition: all 0.2s;
-            }
-            button:active {
-                transform: scale(0.96);
-                box-shadow: 0 2px 8px rgba(6, 182, 212, 0.4);
+                box-shadow: 0 4px 15px rgba(6, 182, 212, 0.4);
             }
         </style>
     </head>
     <body>
         <header>
-            <h1>🔮 Mary Autonomous 3D Engine</h1>
+            <h1>🔮 Mary - IA Autónoma en Línea</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Interfaz 3D activa. Pídeme cualquier programa y lo estructuraré con diseño avanzado.</div>
+            <div class="msg mary">¡Hola, jefe! Ya tengo mi cerebro de IA conectado. Pregúntame lo que quieras o pídeme que programe una app completa.</div>
         </div>
 
         <div class="input-container">
-            <input type="text" id="userInput" placeholder="Ej: Crea un script de análisis..." autofocus>
+            <input type="text" id="userInput" placeholder="Escribe tu instrucción aquí..." autofocus>
             <button onclick="send()">Enviar</button>
         </div>
 
@@ -172,7 +169,7 @@ def home():
                 appendMsg(text, 'user');
                 input.value = '';
 
-                const loadId = appendMsg('Procesando instrucción tridimensional...', 'mary');
+                const loadId = appendMsg('Mary está procesando con IA...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -183,10 +180,10 @@ def home():
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
-                    appendMsg(`<strong>Código Generado:</strong><br><pre>${data.codigo_generado}</pre>`, 'mary', true);
+                    appendMsg(data.respuesta_ia, 'mary', true);
                 } catch (err) {
                     document.getElementById(loadId).remove();
-                    appendMsg('Error de conexión con el núcleo.', 'mary');
+                    appendMsg('Error de comunicación con el núcleo de IA.', 'mary');
                 }
             }
 
@@ -197,7 +194,7 @@ def home():
                 div.id = id;
                 if (isHtml) div.innerHTML = html;
                 else div.textContent = html;
-                    chat.appendChild(div);
+                chat.appendChild(div);
                 chat.scrollTop = chat.scrollHeight;
                 return id;
             }
@@ -208,9 +205,31 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
-    return {
-        "agente": "Mary",
-        "instruccion": req.instruction,
-        "codigo_generado": f"# Módulo 3D generado por Mary\n# Propósito: {req.instruction}\n\ndef render_engine():\n    print('Iniciando entorno gráfico tridimensional...')\n\nif __name__ == '__main__':\n    render_engine()"
-    }
-    
+    try:
+        # Prompt del sistema para definir la personalidad y capacidades de Mary
+        system_prompt = (
+            "Eres Mary, una agente de software autónoma y asistente de trading experta. "
+            "Tu creador y jefe te habla directamente. Responde de forma inteligente, conversacional, "
+            "profesional y redacta código funcional limpio (en bloques de código Markdown) cuando te pidan crear apps o scripts."
+        )
+        
+        # Llamada al modelo Gemini
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=req.instruction,
+            config={
+                'system_instruction': system_prompt,
+                'temperature': 0.7,
+            }
+        )
+        
+        # Convertir texto simple o formato con saltos de línea a HTML amigable para el chat
+        ai_reply = response.text.replace("\n", "<br>")
+        
+        return {
+            "agente": "Mary",
+            "respuesta_ia": ai_reply
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
