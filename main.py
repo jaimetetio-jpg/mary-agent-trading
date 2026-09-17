@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import requests
 import re
 
-app = FastAPI(title="Mary Autonomous AI - Kimi Engine", version="3.9.9")
+app = FastAPI(title="Mary Autonomous AI - OpenRouter Engine", version="4.1.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -22,7 +22,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Kimi Neural Engine v3.9.9</title>
+        <title>Mary - OpenRouter Neural Engine v4.1</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -132,11 +132,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Kimi Neural Engine v3.9.9</h1>
+            <h1>🔮 Mary - OpenRouter Neural Engine v4.1</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo Kimi v3.9.9 conectado con éxito. ¿Qué programa o cálculo hacemos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo OpenRouter v4.1 conectado con éxito. ¿Qué programa o cálculo hacemos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -159,7 +159,7 @@ def home():
                 input.value = '';
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando con Kimi...', 'mary');
+                const loadId = appendMsg('Mary procesando...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -199,10 +199,10 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
-    # API Key integrada directamente de forma segura
-    api_key = "sk-r95hjSAMuoEJySjUPVsmV63EL0Yc8amx8G5qYYKl1ORqG2wP"
+    # API Key integrada directamente
+    api_key = "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"
     
-    url = "https://api.moonshot.cn/v1/chat/completions"
+    url = "https://openrouter.ai/api/v1/chat/completions"
     
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de construcción y trading experta. "
@@ -220,13 +220,15 @@ def build_program(req: PromptRequest):
         messages.append({"role": r, "content": clean_content})
 
     payload = {
-        "model": "moonshot-v1-8k",
+        "model": "meta-llama/llama-3-8b-instruct:free",
         "messages": messages,
         "temperature": 0.3
     }
     
     headers = {
         "Authorization": f"Bearer {api_key}",
+        "HTTP-Referer": "https://trading.onrender.com",
+        "X-Title": "Mary AI Assistant",
         "Content-Type": "application/json"
     }
 
@@ -235,7 +237,7 @@ def build_program(req: PromptRequest):
         res_data = response.json()
         
         if "error" in res_data:
-            error_msg = res_data["error"].get("message", "Error desconocido en Kimi API")
+            error_msg = res_data["error"].get("message", "Error desconocido en OpenRouter")
             return {"agente": "Mary", "respuesta_ia": f"⚠️ Nota de sistema: {error_msg}"}
         
         if "choices" in res_data and len(res_data["choices"]) > 0:
