@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Business Mentor - Jaime Edition", version="4.5.0")
+app = FastAPI(title="Mary Business Mentor - Jaime Edition", version="4.6.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -147,7 +147,6 @@ def home():
                 border-radius: 12px;
                 cursor: pointer;
             }
-            /* Ventana Modal de Historial */
             #modal {
                 display: none;
                 position: fixed;
@@ -179,23 +178,9 @@ def home():
                 border-bottom: 1px solid #334155;
             }
             .modal-header h3 { margin: 0; color: #38bdf8; }
-            .close-btn {
-                background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;
-            }
-            .modal-body {
-                padding: 20px;
-                overflow-y: auto;
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-            }
-            .history-item {
-                padding: 10px;
-                border-radius: 8px;
-                background: #1e293b;
-                font-size: 0.9rem;
-                border-left: 4px solid var(--accent-neon);
-            }
+            .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+            .modal-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+            .history-item { padding: 10px; border-radius: 8px; background: #1e293b; font-size: 0.9rem; border-left: 4px solid var(--accent-neon); }
             .history-item.model { border-left-color: var(--accent-purple); }
         </style>
     </head>
@@ -214,7 +199,6 @@ def home():
             <button class="send-btn" onclick="send()">Enviar</button>
         </div>
 
-        <!-- Ventana Modal de Historial -->
         <div id="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -306,8 +290,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta la GEMINI_API_KEY en Render."}
     
-    # URL corregida con el formato exacto requerido por v1beta: models/gemini-1.5-flash
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # URL apuntando a la versión estable 'v1' y el modelo 'gemini-1.5-flash' sin prefijos conflictivos
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
