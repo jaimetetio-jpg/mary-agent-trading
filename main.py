@@ -1,11 +1,12 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
+from pydantic import BaseModel
 import requests
 import os
 import re
 import sqlite3
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.5")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.6")
 
 DB_FILE = "mary_memory.db"
 
@@ -58,6 +59,9 @@ def clear_db_history():
     except Exception as e:
         print(f"Error limpiando BD: {e}")
 
+class ChatRequest(BaseModel):
+    instruction: str
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
@@ -66,7 +70,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.5</title>
+        <title>Mary - Neural Engine Pro v5.6</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -192,7 +196,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.5</h1>
+            <h1>⚡ Mary Pro v5.6</h1>
             <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
         </header>
 
@@ -236,14 +240,11 @@ def home():
                 input.value = '';
                 const loadId = appendMsg('Mary procesando...', 'mary');
 
-                const formData = new URLSearchParams();
-                formData.append('instruction', text);
-
                 try {
                     const res = await fetch('/build', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: formData
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ instruction: text })
                     });
                     const data = await res.json();
                     
@@ -292,14 +293,14 @@ def clear_history():
     return {"status": "success"}
 
 @app.post("/build")
-async def build_program(instruction: str = Form("")):
+async def build_program(req: ChatRequest):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
-    save_to_db("user", instruction)
+    save_to_db("user", req.instruction)
     db_history = get_db_history()
     
     system_instruction = (
