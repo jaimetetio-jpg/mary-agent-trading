@@ -5,7 +5,7 @@ import requests
 import os
 import re
 
-app = FastAPI(title="Mary Autonomous AI - OpenRouter Engine", version="4.1.1")
+app = FastAPI(title="Mary Autonomous AI - OpenRouter Engine", version="4.1.2")
 
 class ChatMessage(BaseModel):
     role: str
@@ -23,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - OpenRouter Neural Engine v4.1.1</title>
+        <title>Mary - OpenRouter Neural Engine v4.1.2</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -133,11 +133,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - OpenRouter Neural Engine v4.1.1</h1>
+            <h1>🔮 Mary - OpenRouter Neural Engine v4.1.2</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo OpenRouter v4.1.1 conectado con éxito. ¿Qué programa o cálculo hacemos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo OpenRouter v4.1.2 conectado con éxito. ¿Qué programa o cálculo hacemos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -223,7 +223,7 @@ def build_program(req: PromptRequest):
         messages.append({"role": r, "content": clean_content})
 
     payload = {
-        "model": "google/gemma-2-9b-it:free",
+        "model": "openrouter/free",
         "messages": messages,
         "temperature": 0.3
     }
