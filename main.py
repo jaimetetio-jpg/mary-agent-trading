@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.8.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.9.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -290,8 +290,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # URL estable con el modelo estándar de la v1beta
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # URL apuntando al modelo base oficial y universal estable
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
