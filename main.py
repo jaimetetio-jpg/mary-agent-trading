@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Business Mentor - Jaime Edition", version="4.4.0")
+app = FastAPI(title="Mary Business Mentor - Jaime Edition", version="4.5.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -306,7 +306,7 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta la GEMINI_API_KEY en Render."}
     
-    # URL corregida con el modelo oficial actual 'gemini-1.5-flash'
+    # URL corregida con el formato exacto requerido por v1beta: models/gemini-1.5-flash
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
@@ -349,7 +349,7 @@ def build_program(req: PromptRequest):
             else:
                 ai_text = "Respuesta vacía."
                 
-            ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
+            ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "```")
             return {"agente": "Mary", "respuesta_ia": ai_reply}
             
         except Exception as e:
