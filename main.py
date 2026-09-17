@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.7.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.8.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -23,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Smart Neural Engine</title>
+        <title>Mary - Mentora de Negocios</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -44,19 +44,33 @@ def home():
             }
             header {
                 background: linear-gradient(90deg, #1e293b, #0f172a);
-                padding: 15px 20px;
-                text-align: center;
+                padding: 12px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 border-bottom: 2px solid rgba(6, 182, 212, 0.3);
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
                 z-index: 10;
             }
             h1 {
                 margin: 0;
-                font-size: 1.3rem;
+                font-size: 1.1rem;
                 background: linear-gradient(to right, #38bdf8, #c084fc);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
-                text-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
+            }
+            .history-btn {
+                background: rgba(139, 92, 246, 0.2);
+                border: 1px solid var(--accent-purple);
+                color: #c084fc;
+                padding: 6px 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: bold;
+            }
+            .history-btn:hover {
+                background: rgba(139, 92, 246, 0.4);
             }
             #chat {
                 flex: 1;
@@ -124,7 +138,7 @@ def home():
                 border-color: #8b5cf6;
                 box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
             }
-            button {
+            button.send-btn {
                 background: linear-gradient(135deg, #06b6d4, #3b82f6);
                 color: #090d16;
                 border: none;
@@ -133,20 +147,68 @@ def home():
                 border-radius: 12px;
                 cursor: pointer;
             }
+            #modal {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8);
+                backdrop-filter: blur(5px);
+                z-index: 100;
+                justify-content: center;
+                align-items: center;
+            }
+            .modal-content {
+                background: #0f172a;
+                border: 1px solid var(--accent-purple);
+                width: 90%;
+                max-width: 600px;
+                max-height: 80vh;
+                border-radius: 16px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            }
+            .modal-header {
+                padding: 15px 20px;
+                background: #1e293b;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #334155;
+            }
+            .modal-header h3 { margin: 0; color: #38bdf8; }
+            .close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; }
+            .modal-body { padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+            .history-item { padding: 10px; border-radius: 8px; background: #1e293b; font-size: 0.9rem; border-left: 4px solid var(--accent-neon); }
+            .history-item.model { border-left-color: var(--accent-purple); }
         </style>
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Autonomous Engine</h1>
+            <h1>🔮 Mary - Mentora</h1>
+            <button class="history-btn" onclick="openHistory()">🗂️ Historial</button>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Memoria inteligente y núcleo optimizado activos. ¿En qué proyecto o estrategia avanzamos hoy?</div>
+            <div class="msg mary">Hola Jaime soy Mary tu Mentora de Negocio en que puedo ayudarte?</div>
         </div>
 
         <div class="input-container">
-            <input type="text" id="userInput" placeholder="Escribe tu instrucción aquí..." autofocus>
-            <button onclick="send()">Enviar</button>
+            <input type="text" id="userInput" placeholder="Escribe tu consulta aquí, Jaime..." autofocus>
+            <button class="send-btn" onclick="send()">Enviar</button>
+        </div>
+
+        <div id="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Historial de Conversación</h3>
+                    <button class="close-btn" onclick="closeHistory()">&times;</button>
+                </div>
+                <div class="modal-body" id="historyList">
+                    <p style="color: #94a3b8; text-align: center;">No hay historial aún.</p>
+                </div>
+            </div>
         </div>
 
         <script>
@@ -162,8 +224,6 @@ def home():
 
                 appendMsg(text, 'user');
                 input.value = '';
-
-                // Guardar en el historial local
                 conversationHistory.push({ role: "user", content: text });
 
                 const loadId = appendMsg('Mary procesando con memoria activa...', 'mary');
@@ -180,8 +240,6 @@ def home():
                     const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
                     
                     appendMsg(replyText, 'mary', true);
-                    
-                    // Guardar respuesta de la IA en el historial
                     conversationHistory.push({ role: "model", content: replyText });
 
                 } catch (err) {
@@ -201,6 +259,26 @@ def home():
                 chat.scrollTop = chat.scrollHeight;
                 return id;
             }
+
+            function openHistory() {
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+                if (conversationHistory.length === 0) {
+                    list.innerHTML = '<p style="color: #94a3b8; text-align: center;">El historial está vacío.</p>';
+                } else {
+                    conversationHistory.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = `history-item ${item.role}`;
+                        div.innerHTML = `<strong>${item.role === 'user' ? 'Jaime' : 'Mary'}:</strong> ${item.content.substring(0, 150)}...`;
+                        list.appendChild(div);
+                    });
+                }
+                document.getElementById('modal').style.display = 'flex';
+            }
+
+            function closeHistory() {
+                document.getElementById('modal').style.display = 'none';
+            }
         </script>
     </body>
     </html>
@@ -212,42 +290,35 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
+    # URL estable con el modelo estándar de la v1beta
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
-    # Instrucción de sistema experta (Smart Training)
     system_instruction = (
-        "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
-        "Posees un razonamiento avanzado, alta capacidad de análisis técnico y destreza en programación web y Python. "
-        "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
+        "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
+        "Tu socio y usuario principal se llama JAIME. "
+        "REGLA CRÍTICA: Debes dirigirte a él SIEMPRE por su nombre (Jaime) de forma natural y profesional. "
+        "Sé directa, analítica, brillante y concisa."
     )
     
-    # Construir contents formateando todo el historial de la conversación para darle memoria real
     contents = []
-    
-    # Inyectar prompt del sistema como contexto inicial
     contents.append({
         "role": "user",
         "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
     })
     contents.append({
         "role": "model",
-        "parts": [{"text": "Entendido, jefe. Mantendré un perfil inteligente, técnico, directo y con memoria activa de nuestra sesión."}]
+        "parts": [{"text": "Hola Jaime soy Mary tu Mentora de Negocio en que puedo ayudarte?"}]
     })
 
-    # Añadir todo el historial previo recibido desde el navegador
     for msg in req.history:
-        # La API de Gemini espera los roles como 'user' y 'model'
         api_role = "user" if msg.role == "user" else "model"
-        # Limpiamos etiquetas HTML previas del historial del modelo para enviarlas limpias
         clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
         contents.append({
             "role": api_role,
             "parts": [{"text": clean_content}]
         })
 
-    payload = {
-        "contents": contents
-    }
+    payload = {"contents": contents}
     
     max_retries = 3
     backoff_factor = 2
