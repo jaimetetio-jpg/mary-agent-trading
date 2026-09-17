@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import os
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.3.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.4.0")
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -198,8 +198,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # Usamos gemini-1.5-flash que es el modelo estándar más robusto y compatible
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Cambiamos al modelo gemini-2.5-flash que es compatible directamente con la ruta v1beta
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
     
     payload = {
         "contents": [{
@@ -211,12 +211,10 @@ def build_program(req: PromptRequest):
         response = requests.post(url, json=payload)
         res_data = response.json()
         
-        # Si Google devuelve un error en el JSON, lo capturamos y mostramos claramente
         if "error" in res_data:
             error_msg = res_data["error"].get("message", "Error desconocido de API")
             return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
         
-        # Extraer el texto de la respuesta con seguridad
         if "candidates" in res_data and len(res_data["candidates"]) > 0:
             ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
         else:
