@@ -5,7 +5,7 @@ import requests
 import os
 import re
 
-app = FastAPI(title="Mary Autonomous AI - OpenRouter Engine", version="4.1.2")
+app = FastAPI(title="Mary Autonomous AI - OpenRouter Engine", version="4.1.3")
 
 class ChatMessage(BaseModel):
     role: str
@@ -23,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - OpenRouter Neural Engine v4.1.2</title>
+        <title>Mary - OpenRouter Neural Engine v4.1.3</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -133,11 +133,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - OpenRouter Neural Engine v4.1.2</h1>
+            <h1>⚡ Mary - OpenRouter Neural Engine v4.1.3</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo OpenRouter v4.1.2 conectado con éxito. ¿Qué programa o cálculo hacemos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo ultra-rápido v4.1.3 conectado. ¿Qué calculamos o programamos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -160,7 +160,7 @@ def home():
                 input.value = '';
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando...', 'mary');
+                const loadId = appendMsg('Mary procesando al instante...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -222,8 +222,9 @@ def build_program(req: PromptRequest):
         clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
         messages.append({"role": r, "content": clean_content})
 
+    # Usamos deepseek-chat (o mistralai/mixtral-8x7b-instruct si prefieres), que responden rapidísimo
     payload = {
-        "model": "openrouter/free",
+        "model": "deepseek/deepseek-chat",
         "messages": messages,
         "temperature": 0.3
     }
@@ -236,7 +237,7 @@ def build_program(req: PromptRequest):
     }
 
     try:
-        response = requests.post(url, json=payload, headers=headers, timeout=45)
+        response = requests.post(url, json=payload, headers=headers, timeout=30)
         res_data = response.json()
         
         if "error" in res_data:
