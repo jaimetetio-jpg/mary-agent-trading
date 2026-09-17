@@ -2,10 +2,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
-import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="4.2.0")
+app = FastAPI(title="Mary Autonomous AI")
 
 class ChatMessage(BaseModel):
     role: str
@@ -290,8 +289,7 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta GEMINI_API_KEY en Render."}
     
-    # URL apuntando a la versión estable v1 con gemini-1.5-flash optimizado
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
@@ -301,7 +299,7 @@ def build_program(req: PromptRequest):
     )
     
     contents = []
-    contents.append({"role": "user", "parts": [{"text": f"Sistema de instrucciones: {system_instruction}"}]})
+    contents.append({"role": "user", "parts": [{"text": f"Instrucción del sistema: {system_instruction}"}]})
     contents.append({"role": "model", "parts": [{"text": "Entendido. Hola Jaime, soy Mary, tu mentora de negocio. ¿En qué te puedo ayudar hoy?"}]})
 
     for msg in req.history:
