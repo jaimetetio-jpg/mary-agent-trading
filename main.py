@@ -6,7 +6,7 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.1")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.2")
 
 DB_FILE = "mary_memory.db"
 
@@ -23,12 +23,18 @@ def init_db():
         ''')
         conn.commit()
         
-        # Asegurar saludo inicial automático si la BD está totalmente vacía
-        cursor.execute("SELECT COUNT(*) FROM history")
-        count = cursor.fetchone()[0]
-        if count == 0:
-            greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?"
-            cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", greeting))
+        # Verificar si hay registros; si está vacío, o si el primer mensaje no es el saludo actual, actualizarlo
+        cursor.execute("SELECT id, content FROM history ORDER BY id ASC LIMIT 1")
+        row = cursor.fetchone()
+        
+        target_greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
+        
+        if not row:
+            cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", target_greeting))
+            conn.commit()
+        else:
+            # Forzar actualización del saludo principal si cambió la versión
+            cursor.execute("UPDATE history SET content = ? WHERE id = ?", (target_greeting, row[0]))
             conn.commit()
             
         conn.close()
@@ -63,6 +69,9 @@ def clear_db_history():
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("DELETE FROM history")
+        # Volver a insertar el saludo obligatorio al limpiar
+        target_greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
+        cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", target_greeting))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -76,7 +85,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.1</title>
+        <title>Mary - Neural Engine Pro v6.2</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -311,7 +320,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.1</h1>
+            <h1>⚡ Mary Pro v6.2</h1>
             <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
         </header>
 
@@ -493,9 +502,6 @@ def get_history():
 @app.post("/clear")
 def clear_history():
     clear_db_history()
-    # Volver a insertar saludo al limpiar
-    greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?"
-    save_to_db("assistant", greeting)
     return {"status": "success"}
 
 @app.post("/build")
