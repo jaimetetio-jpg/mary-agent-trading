@@ -2,9 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
-import requests
+from google import genai
+from google.genai import types
 
-app = FastAPI(title="Mary Autonomous AI", version="5.0.0")
+app = FastAPI(title="Mary Autonomous AI", version="7.0.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -289,42 +290,37 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta GEMINI_API_KEY en Render."}
     
-    # Usando gemini-2.5-flash y versión v1 estable para evitar conflictos
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
-    
-    system_instruction = (
-        "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
-        "Tu socio y usuario principal se llama JAIME. "
-        "REGLA CRÍTICA: Debes dirigirte a él SIEMPRE por su nombre (Jaime) de forma natural y profesional. "
-        "Sé directa, analítica, brillante y concisa."
-    )
-    
-    contents = []
-    contents.append({"role": "user", "parts": [{"text": f"Instrucción del sistema: {system_instruction}"}]})
-    contents.append({"role": "model", "parts": [{"text": "Entendido. Hola Jaime, soy Mary, tu mentora de negocio. ¿En qué te puedo ayudar hoy?"}]})
-
-    for msg in req.history:
-        r = "user" if msg.role == "user" else "model"
-        clean = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
-        contents.append({"role": r, "parts": [{"text": clean}]})
-
-    payload = {"contents": contents}
-    
     try:
-        response = requests.post(url, json=payload, timeout=30)
-        res_data = response.json()
+        client = genai.Client(api_key=api_key)
         
-        if "error" in res_data:
-            error_msg = res_data["error"].get("message", "Error desconocido de API")
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
+        system_instruction = (
+            "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
+            "Tu socio y usuario principal se llama JAIME. "
+            "REGLA CRÍTICA: Debes dirigirte a él SIEMPRE por su nombre (Jaime) de forma natural y profesional. "
+            "Sé directa, analítica, brillante y concisa."
+        )
         
-        if "candidates" in res_data and len(res_data["candidates"]) > 0:
-            ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-        else:
-            ai_text = "Respuesta vacía del modelo."
+        contents = []
+        for msg in req.history:
+            r = "user" if msg.role == "user" else "model"
+            clean = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
+            contents.append(types.Content(role=r, parts=[types.Part.from_text(text=clean)]))
             
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.7,
+        )
+        
+        # Usando el modelo actualizado requerido por el sistema
+        response = client.models.generate_content(
+            model='gemini-3.6-flash',
+            contents=contents,
+            config=config,
+        )
+        
+        ai_text = response.text if response and response.text else "Respuesta vacía del modelo."
         ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
         return {"agente": "Mary", "respuesta_ia": ai_reply}
         
     except Exception as e:
-        return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción de conexión: {str(e)}"}
+        return {"agente": "Mary", "respuesta_ia": f"⚠️ Error del SDK de Google AI: {str(e)}"}
