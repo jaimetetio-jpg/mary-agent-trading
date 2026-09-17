@@ -7,50 +7,59 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.0.1")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.1")
 
 # --- CONFIGURACIÓN DE BASE DE DATOS (HISTORIAL PERSISTENTE) ---
 DB_FILE = "mary_memory.db"
 
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            role TEXT,
-            content TEXT
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                role TEXT,
+                content TEXT
+            )
+        ''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error inicializando BD: {e}")
 
 init_db()
 
 def get_db_history():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("SELECT role, content FROM history ORDER BY id ASC")
-    rows = cursor.fetchall()
-    conn.close()
-    return [{"role": row[0], "content": row[1]} for row in rows]
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("SELECT role, content FROM history ORDER BY id ASC")
+        rows = cursor.fetchall()
+        conn.close()
+        return [{"role": row[0], "content": row[1]} for row in rows]
+    except Exception:
+        return []
 
 def save_to_db(role: str, content: str):
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", (role, content))
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", (role, content))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error guardando en BD: {e}")
 
 def clear_db_history():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM history")
-    conn.commit()
-    conn.close()
-
-class PromptRequest(BaseModel):
-    instruction: str
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM history")
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error limpiando BD: {e}")
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -60,7 +69,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.0.1</title>
+        <title>Mary - Neural Engine Pro v5.1</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -205,7 +214,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.0.1</h1>
+            <h1>⚡ Mary Pro v5.1</h1>
             <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
         </header>
 
@@ -235,8 +244,8 @@ def home():
                     const res = await fetch('/history');
                     const data = await res.json();
                     chat.innerHTML = '';
-                    if (data.history.length === 0) {
-                        appendMsg('¡Hola, Jaime! Memoria v5.0.1 sincronizada. Sube una foto, documento o escribe tu comando.', 'mary', true);
+                    if (!data.history || data.history.length === 0) {
+                        appendMsg('¡Hola, Jaime! Memoria v5.1 lista. Sube una foto, documento o escribe tu comando.', 'mary', true);
                     } else {
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
@@ -381,7 +390,6 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         else:
             messages.append({"role": role, "content": content})
 
-    # Modelo por defecto rápido (deepseek-chat), pero si hay imagen cambiamos a gpt-4o-mini de OpenRouter que soporta visión perfectamente
     model_to_use = "deepseek/deepseek-chat"
     if image_payload:
         model_to_use = "openai/gpt-4o-mini"
