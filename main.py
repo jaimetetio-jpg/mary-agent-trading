@@ -5,11 +5,15 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.6.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.7.0")
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
 
 class PromptRequest(BaseModel):
     instruction: str
-    language: str = "python"
+    history: list[ChatMessage] = []
 
 @app.get("/", response_class=HTMLResponse)
 def home():
@@ -19,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - 3D AI Neural Engine</title>
+        <title>Mary - Smart Neural Engine</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -133,11 +137,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - IA Autónoma en Línea</h1>
+            <h1>🔮 Mary - Smart Autonomous Engine</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Cerebro reconectado con reintentos automáticos activados. Pregúntame lo que quieras o pídeme código.</div>
+            <div class="msg mary">¡Hola, jefe! Memoria inteligente y núcleo optimizado activos. ¿En qué proyecto o estrategia avanzamos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -148,6 +152,7 @@ def home():
         <script>
             const chat = document.getElementById('chat');
             const input = document.getElementById('userInput');
+            let conversationHistory = [];
 
             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
 
@@ -158,22 +163,30 @@ def home():
                 appendMsg(text, 'user');
                 input.value = '';
 
-                const loadId = appendMsg('Mary está procesando con IA (con reintentos automáticos)...', 'mary');
+                // Guardar en el historial local
+                conversationHistory.push({ role: "user", content: text });
+
+                const loadId = appendMsg('Mary procesando con memoria activa...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ instruction: text, language: 'python' })
+                        body: JSON.stringify({ instruction: text, history: conversationHistory })
                     });
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
                     const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
+                    
                     appendMsg(replyText, 'mary', true);
+                    
+                    // Guardar respuesta de la IA en el historial
+                    conversationHistory.push({ role: "model", content: replyText });
+
                 } catch (err) {
                     document.getElementById(loadId).remove();
-                    appendMsg('Error de comunicación con el núcleo de IA.', 'mary');
+                    appendMsg('Error de comunicación con el núcleo inteligente.', 'mary');
                 }
             }
 
@@ -201,23 +214,51 @@ def build_program(req: PromptRequest):
     
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
     
+    # Instrucción de sistema experta (Smart Training)
+    system_instruction = (
+        "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
+        "Posees un razonamiento avanzado, alta capacidad de análisis técnico y destreza en programación web y Python. "
+        "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
+    )
+    
+    # Construir contents formateando todo el historial de la conversación para darle memoria real
+    contents = []
+    
+    # Inyectar prompt del sistema como contexto inicial
+    contents.append({
+        "role": "user",
+        "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
+    })
+    contents.append({
+        "role": "model",
+        "parts": [{"text": "Entendido, jefe. Mantendré un perfil inteligente, técnico, directo y con memoria activa de nuestra sesión."}]
+    })
+
+    # Añadir todo el historial previo recibido desde el navegador
+    for msg in req.history:
+        # La API de Gemini espera los roles como 'user' y 'model'
+        api_role = "user" if msg.role == "user" else "model"
+        # Limpiamos etiquetas HTML previas del historial del modelo para enviarlas limpias
+        clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
+        contents.append({
+            "role": api_role,
+            "parts": [{"text": clean_content}]
+        })
+
     payload = {
-        "contents": [{
-            "parts": [{"text": f"Eres Mary, una agente de software autónoma y asistente de trading experta. Tu jefe te habla. Responde de forma inteligente, conversacional y redacta código funcional limpio en bloques cuando sea necesario. Instrucción: {req.instruction}"}]
-        }]
+        "contents": contents
     }
     
     max_retries = 3
-    backoff_factor = 2  # Segundos de espera multiplicativos por intento
+    backoff_factor = 2
 
     for attempt in range(max_retries):
         try:
-            response = requests.post(url, json=payload, timeout=30)
+            response = requests.post(url, json=payload, timeout=35)
             res_data = response.json()
             
             if "error" in res_data:
                 error_msg = res_data["error"].get("message", "Error desconocido de API")
-                # Si es un error de alta demanda (código 429 o mensaje de alta demanda), reintentamos
                 if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
                     if attempt < max_retries - 1:
                         time.sleep(backoff_factor ** (attempt + 1))
