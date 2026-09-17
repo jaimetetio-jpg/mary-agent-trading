@@ -6,7 +6,7 @@ import time
 import requests
 import re
 
-app = FastAPI(title="Mary Autonomous AI", version="3.9.6")
+app = FastAPI(title="Mary Autonomous AI", version="3.9.7")
 
 class ChatMessage(BaseModel):
     role: str
@@ -24,7 +24,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Smart Neural Engine v3.9.6</title>
+        <title>Mary - Smart Neural Engine v3.9.7</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -139,11 +139,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Neural Engine v3.9.6</h1>
+            <h1>🔮 Mary - Smart Neural Engine v3.9.7</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo v3.9.6 estable en línea. ¿En qué trabajamos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo v3.9.7 operativo. ¿En qué trabajamos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -212,8 +212,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # URL corregida utilizando gemini-1.5-flash estable en v1beta
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # URL apuntando a gemini-pro con v1beta para garantizar compatibilidad total
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de construcción y trading experta. "
@@ -280,3 +280,4 @@ def build_program(req: PromptRequest):
             return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de conexión: {str(e)}"}
     
     return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor está ocupado. Intenta de nuevo en unos segundos."}
+
