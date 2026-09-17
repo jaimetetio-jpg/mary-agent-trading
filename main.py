@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.7.0")
+app = FastAPI(title="Mary Robust & Smart AI", version="3.9.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -23,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Smart Neural Engine</title>
+        <title>Mary - Robust & Smart Neural Engine</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -56,7 +56,6 @@ def home():
                 background: linear-gradient(to right, #38bdf8, #c084fc);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
-                text-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
             }
             #chat {
                 flex: 1;
@@ -137,11 +136,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Autonomous Engine</h1>
+            <h1>🔮 Mary - Robust & Smart Engine</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Memoria inteligente y núcleo optimizado activos. ¿En qué proyecto o estrategia avanzamos hoy?</div>
+            <div class="msg mary">¡Hola, jefe! Núcleo robusto con reintentos y memoria inteligente listo. ¿En qué trabajamos?</div>
         </div>
 
         <div class="input-container">
@@ -162,11 +161,9 @@ def home():
 
                 appendMsg(text, 'user');
                 input.value = '';
-
-                // Guardar en el historial local
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando con memoria activa...', 'mary');
+                const loadId = appendMsg('Mary procesando con reintentos automáticos y memoria...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -177,16 +174,14 @@ def home():
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
-                    const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
+                    const replyText = data.respuesta_ia || "Error: Respuesta vacía.";
                     
                     appendMsg(replyText, 'mary', true);
-                    
-                    // Guardar respuesta de la IA en el historial
                     conversationHistory.push({ role: "model", content: replyText });
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
-                    appendMsg('Error de comunicación con el núcleo inteligente.', 'mary');
+                    appendMsg('⚠️ Error de comunicación con el núcleo.', 'mary');
                 }
             }
 
@@ -212,53 +207,39 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
+    # Usamos gemini-1.5-flash: estable, rápido y robusto
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
-    # Instrucción de sistema experta (Smart Training)
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
         "Posees un razonamiento avanzado, alta capacidad de análisis técnico y destreza en programación web y Python. "
         "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
     )
     
-    # Construir contents formateando todo el historial de la conversación para darle memoria real
     contents = []
-    
-    # Inyectar prompt del sistema como contexto inicial
-    contents.append({
-        "role": "user",
-        "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
-    })
-    contents.append({
-        "role": "model",
-        "parts": [{"text": "Entendido, jefe. Mantendré un perfil inteligente, técnico, directo y con memoria activa de nuestra sesión."}]
-    })
+    contents.append({"role": "user", "parts": [{"text": f"[Sistema]: {system_instruction}"}]})
+    contents.append({"role": "model", "parts": [{"text": "Entendido jefe, sistema robusto y memoria activa operando."}]})
 
-    # Añadir todo el historial previo recibido desde el navegador
-    for msg in req.history:
-        # La API de Gemini espera los roles como 'user' y 'model'
+    # Mantenemos un historial equilibrado (últimos 6 mensajes) para no sobrecargar ni congelar
+    recent_history = req.history[-6:]
+    for msg in recent_history:
         api_role = "user" if msg.role == "user" else "model"
-        # Limpiamos etiquetas HTML previas del historial del modelo para enviarlas limpias
         clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
-        contents.append({
-            "role": api_role,
-            "parts": [{"text": clean_content}]
-        })
+        contents.append({"role": api_role, "parts": [{"text": clean_content}]})
 
-    payload = {
-        "contents": contents
-    }
+    payload = {"contents": contents}
     
     max_retries = 3
     backoff_factor = 2
 
     for attempt in range(max_retries):
         try:
-            response = requests.post(url, json=payload, timeout=35)
+            response = requests.post(url, json=payload, timeout=30)
             res_data = response.json()
             
             if "error" in res_data:
                 error_msg = res_data["error"].get("message", "Error desconocido de API")
+                # Si hay alta demanda o saturación, reintenta automáticamente con espera exponencial
                 if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
                     if attempt < max_retries - 1:
                         time.sleep(backoff_factor ** (attempt + 1))
