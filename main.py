@@ -4,8 +4,9 @@ from pydantic import BaseModel
 import os
 import time
 import requests
+import re
 
-app = FastAPI(title="Mary Autonomous AI", version="3.9.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.9.1")
 
 class ChatMessage(BaseModel):
     role: str
@@ -138,11 +139,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Neural Engine v3.9</h1>
+            <h1>🔮 Mary - Smart Neural Engine v3.9.1</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo optimizado y parser de código reparado. ¿Qué avanzamos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Endpoint corregido a v1beta. ¿En qué avanzamos?</div>
         </div>
 
         <div class="input-container">
@@ -211,8 +212,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # Usamos la ruta oficial estable v1 con gemini-1.5-flash
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # CORREGIDO: Usamos la ruta oficial v1beta que sí soporta gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
@@ -222,7 +223,6 @@ def build_program(req: PromptRequest):
     
     contents = []
     
-    # Inyectamos el prompt de sistema como contenido inicial
     contents.append({
         "role": "user",
         "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
@@ -264,12 +264,10 @@ def build_program(req: PromptRequest):
             else:
                 ai_text = f"Respuesta inesperada: {str(res_data)}"
                 
-            # Procesamiento de formato: convertimos bloques markdown ```python a <pre><code> para que no se rompa visualmente
+            # Procesamiento de formato seguro
             ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             ai_reply = ai_reply.replace("&lt;br&gt;", "<br>").replace("\n", "<br>")
             
-            # Formatear bloques de código correctamente con etiquetas HTML seguras
-            import re
             ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
             ai_reply = ai_reply.replace("&lt;pre&gt;", "<pre>").replace("&lt;/pre&gt;", "</pre>")
             ai_reply = ai_reply.replace("&lt;code&gt;", "<code>").replace("&lt;/code&gt;", "</code></pre>")
