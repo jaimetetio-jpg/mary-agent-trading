@@ -6,7 +6,7 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.0")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.1")
 
 DB_FILE = "mary_memory.db"
 
@@ -67,7 +67,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.0</title>
+        <title>Mary - Neural Engine Pro v6.1</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -303,7 +303,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.0</h1>
+            <h1>⚡ Mary Pro v6.1</h1>
             <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
         </header>
 
@@ -353,7 +353,9 @@ def home():
                     const data = await res.json();
                     chat.innerHTML = '';
                     if (!data.history || data.history.length === 0) {
-                        appendMsg('¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?', 'mary', true);
+                        // Si está vacío, le pedimos al backend que guarde el saludo inicial en SQLite
+                        await fetch('/init-greet', { method: 'POST' });
+                        loadHistory(); // Recargamos para pintarlo desde la BD
                     } else {
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
@@ -471,6 +473,12 @@ def home():
 @app.get("/history")
 def get_history():
     return {"history": get_db_history()}
+
+@app.post("/init-greet")
+def init_greet():
+    greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?"
+    save_to_db("assistant", greeting)
+    return {"status": "initialized"}
 
 @app.post("/clear")
 def clear_history():
