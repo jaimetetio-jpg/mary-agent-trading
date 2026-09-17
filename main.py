@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import os
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.1.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.2.0")
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -168,7 +168,9 @@ def home():
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
-                    appendMsg(data.respuesta_ia, 'mary', true);
+                    // AQUÍ ESTÁ LA CORRECCIÓN CLAVE: leemos data.respuesta_ia con seguridad
+                    const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
+                    appendMsg(replyText, 'mary', true);
                 } catch (err) {
                     document.getElementById(loadId).remove();
                     appendMsg('Error de comunicación con el núcleo de IA.', 'mary');
@@ -209,9 +211,13 @@ def build_program(req: PromptRequest):
         response = requests.post(url, json=payload)
         res_data = response.json()
         
-        # Extraer la respuesta del JSON de Google
-        ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-        ai_reply = ai_text.replace("\n", "<br>").replace("```", "<pre><code>").replace("</code></pre>", "</code></pre>")
+        # Extraer con seguridad el texto de la respuesta de Google
+        if "candidates" in res_data and len(res_data["candidates"]) > 0:
+            ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+        else:
+            ai_text = f"Respuesta cruda: {str(res_data)}"
+            
+        ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
         
         return {
             "agente": "Mary",
