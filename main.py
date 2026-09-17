@@ -2,11 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
-import time
 import requests
 import re
 
-app = FastAPI(title="Mary Autonomous AI", version="3.9.7")
+app = FastAPI(title="Mary Autonomous AI - Kimi Engine", version="3.9.9")
 
 class ChatMessage(BaseModel):
     role: str
@@ -24,12 +23,11 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Smart Neural Engine v3.9.7</title>
+        <title>Mary - Kimi Neural Engine v3.9.9</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
-                --accent-neon: #06b6d4;
-                --accent-purple: #8b5cf6;
+                --accent-neon: #10b981;
                 --text-main: #f8fafc;
             }
             body {
@@ -47,17 +45,16 @@ def home():
                 background: linear-gradient(90deg, #1e293b, #0f172a);
                 padding: 15px 20px;
                 text-align: center;
-                border-bottom: 2px solid rgba(6, 182, 212, 0.3);
+                border-bottom: 2px solid rgba(16, 185, 129, 0.3);
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
                 z-index: 10;
             }
             h1 {
                 margin: 0;
                 font-size: 1.3rem;
-                background: linear-gradient(to right, #38bdf8, #c084fc);
+                background: linear-gradient(to right, #34d399, #60a5fa);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
-                text-shadow: 0 2px 10px rgba(56, 189, 248, 0.3);
             }
             #chat {
                 flex: 1;
@@ -80,29 +77,26 @@ def home():
             }
             .mary {
                 background: linear-gradient(145deg, #1e293b, #0f172a);
-                border: 1px solid rgba(139, 92, 246, 0.3);
+                border: 1px solid rgba(16, 185, 129, 0.3);
                 align-self: flex-start;
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
             }
             .user {
-                background: linear-gradient(135deg, #2563eb, #1d4ed8);
+                background: linear-gradient(135deg, #059669, #047857);
                 color: white;
                 align-self: flex-end;
-                box-shadow: 0 10px 20px -5px rgba(37, 99, 235, 0.5);
             }
             pre {
                 background: #05070c;
                 padding: 12px;
                 border-radius: 8px;
-                color: #38bdf8;
+                color: #34d399;
                 overflow-x: auto;
                 font-family: 'Courier New', Courier, monospace;
-                border: 1px solid rgba(56, 189, 248, 0.2);
+                border: 1px solid rgba(52, 211, 153, 0.2);
                 white-space: pre-wrap;
             }
             .input-container {
                 background: rgba(15, 23, 42, 0.9);
-                backdrop-filter: blur(10px);
                 padding: 15px 20px;
                 display: flex;
                 gap: 12px;
@@ -110,7 +104,7 @@ def home():
                 width: 100%;
                 margin: 0 auto;
                 box-sizing: border-box;
-                border-top: 2px solid rgba(139, 92, 246, 0.2);
+                border-top: 2px solid rgba(16, 185, 129, 0.2);
             }
             input {
                 flex: 1;
@@ -123,12 +117,12 @@ def home():
                 outline: none;
             }
             input:focus {
-                border-color: #8b5cf6;
-                box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
+                border-color: #10b981;
+                box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
             }
             button {
-                background: linear-gradient(135deg, #06b6d4, #3b82f6);
-                color: #090d16;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
                 border: none;
                 padding: 0 22px;
                 font-weight: bold;
@@ -139,11 +133,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Neural Engine v3.9.7</h1>
+            <h1>🔮 Mary - Kimi Neural Engine v3.9.9</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo v3.9.7 operativo. ¿En qué trabajamos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo Kimi v3.9.9 conectado con éxito. ¿Qué programa o cálculo hacemos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -164,10 +158,9 @@ def home():
 
                 appendMsg(text, 'user');
                 input.value = '';
-
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando...', 'mary');
+                const loadId = appendMsg('Mary procesando con Kimi...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -178,11 +171,10 @@ def home():
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
-                    const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
+                    const replyText = data.respuesta_ia || "Error: Respuesta vacía.";
                     
                     appendMsg(replyText, 'mary', true);
-                    
-                    conversationHistory.push({ role: "model", content: replyText });
+                    conversationHistory.push({ role: "assistant", content: replyText });
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
@@ -208,12 +200,11 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
-    api_key = os.environ.get("GEMINI_API_KEY")
+    api_key = os.environ.get("KIMI_API_KEY") or os.environ.get("OPENROUTER_API_KEY") or os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
+        return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la KIMI_API_KEY en Render."}
     
-    # URL apuntando a gemini-pro con v1beta para garantizar compatibilidad total
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={api_key}"
+    url = "https://api.moonshot.cn/v1/chat/completions"
     
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de construcción y trading experta. "
@@ -221,63 +212,47 @@ def build_program(req: PromptRequest):
         "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
     )
     
-    contents = []
-    contents.append({
-        "role": "user",
-        "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
-    })
-    contents.append({
-        "role": "model",
-        "parts": [{"text": "Entendido, jefe. Operando con máxima eficiencia y memoria activa."}]
-    })
-
+    messages = [{"role": "system", "content": system_instruction}]
+    
     for msg in req.history:
-        api_role = "user" if msg.role == "user" else "model"
+        r = "user" if msg.role == "user" else "assistant"
+        if msg.role == "model":
+            r = "assistant"
         clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
-        contents.append({
-            "role": api_role,
-            "parts": [{"text": clean_content}]
-        })
+        messages.append({"role": r, "content": clean_content})
 
     payload = {
-        "contents": contents
+        "model": "moonshot-v1-8k",
+        "messages": messages,
+        "temperature": 0.3
     }
     
-    max_retries = 3
-    backoff_base = 2
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
 
-    for attempt in range(max_retries):
-        try:
-            response = requests.post(url, json=payload, timeout=35)
-            res_data = response.json()
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=45)
+        res_data = response.json()
+        
+        if "error" in res_data:
+            error_msg = res_data["error"].get("message", "Error desconocido en Kimi API")
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Nota de sistema: {error_msg}"}
+        
+        if "choices" in res_data and len(res_data["choices"]) > 0:
+            ai_text = res_data["choices"][0]["message"]["content"]
+        else:
+            ai_text = f"Respuesta inesperada: {str(res_data)}"
             
-            if "error" in res_data:
-                error_msg = res_data["error"].get("message", "Error desconocido de API")
-                if any(x in error_msg.lower() for x in ["resourceexhausted", "quota", "high demand", "429", "overloaded", "not found"]):
-                    if attempt < max_retries - 1:
-                        time.sleep(backoff_base ** attempt)
-                        continue
-                return {"agente": "Mary", "respuesta_ia": f"⚠️ Nota de sistema: {error_msg}. Por favor, reintenta en un momento."}
-            
-            if "candidates" in res_data and len(res_data["candidates"]) > 0:
-                ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-            else:
-                ai_text = f"Respuesta inesperada: {str(res_data)}"
-                
-            ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            ai_reply = ai_reply.replace("\n", "<br>")
-            ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
-            ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
+        ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        ai_reply = ai_reply.replace("\n", "<br>")
+        ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
+        ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
 
-            return {
-                "agente": "Mary",
-                "respuesta_ia": ai_reply
-            }
-        except Exception as e:
-            if attempt < max_retries - 1:
-                time.sleep(backoff_base ** attempt)
-                continue
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de conexión: {str(e)}"}
-    
-    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor está ocupado. Intenta de nuevo en unos segundos."}
-
+        return {
+            "agente": "Mary",
+            "respuesta_ia": ai_reply
+        }
+    except Exception as e:
+        return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de conexión: {str(e)}"}
