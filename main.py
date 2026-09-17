@@ -1,15 +1,12 @@
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel
 import requests
 import os
 import re
 import sqlite3
-import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.4")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.5")
 
-# --- CONFIGURACIÓN DE BASE DE DATOS (HISTORIAL PERSISTENTE) ---
 DB_FILE = "mary_memory.db"
 
 def init_db():
@@ -69,7 +66,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.4</title>
+        <title>Mary - Neural Engine Pro v5.5</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -182,24 +179,6 @@ def home():
                 border-color: #10b981;
                 box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
             }
-            .file-upload-btn {
-                background: #334155;
-                color: white;
-                padding: 0 14px;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 1.2rem;
-                transition: background 0.2s;
-            }
-            .file-upload-btn:hover {
-                background: #475569;
-            }
-            input[type="file"] {
-                display: none;
-            }
             button.send-btn {
                 background: linear-gradient(135deg, #10b981, #059669);
                 color: white;
@@ -209,28 +188,18 @@ def home():
                 border-radius: 12px;
                 cursor: pointer;
             }
-            #fileNameDisplay {
-                font-size: 0.8rem;
-                color: #34d399;
-                padding-left: 5px;
-                display: none;
-            }
         </style>
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.4</h1>
+            <h1>⚡ Mary Pro v5.5</h1>
             <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
         </header>
 
         <div id="chat"></div>
 
         <div class="input-container">
-            <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
             <div class="input-row">
-                <label class="file-upload-btn" title="Adjuntar foto o archivo">
-                    📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
-                </label>
                 <input type="text" id="userInput" placeholder="Escribe tu instrucción o pregunta..." autofocus>
                 <button class="send-btn" onclick="send()">Enviar</button>
             </div>
@@ -239,8 +208,6 @@ def home():
         <script>
             const chat = document.getElementById('chat');
             const input = document.getElementById('userInput');
-            const fileInput = document.getElementById('fileInput');
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
 
             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
 
@@ -261,48 +228,28 @@ def home():
                 }
             }
 
-            function showFileName() {
-                if (fileInput.files.length > 0) {
-                    fileNameDisplay.textContent = '📎 ' + fileInput.files[0].name;
-                    fileNameDisplay.style.display = 'block';
-                } else {
-                    fileNameDisplay.style.display = 'none';
-                }
-            }
-
             async function send() {
                 const text = input.value.trim();
-                const file = fileInput.files[0];
-                if (!text && !file) return;
+                if (!text) return;
 
-                let displayText = text;
-                if (file) displayText += `<br><em>[Archivo adjunto: ${file.name}]</em>`;
-                
-                appendMsg(displayText, 'user', true);
-                
+                appendMsg(text, 'user', true);
                 input.value = '';
                 const loadId = appendMsg('Mary procesando...', 'mary');
 
-                const formData = new FormData();
+                const formData = new URLSearchParams();
                 formData.append('instruction', text);
-                if (file) {
-                    formData.append('file', file);
-                }
 
                 try {
                     const res = await fetch('/build', {
                         method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: formData
                     });
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
                     const replyText = data.respuesta_ia || "Error de respuesta.";
-                    
                     appendMsg(replyText, 'mary', true);
-                    
-                    fileInput.value = '';
-                    fileNameDisplay.style.display = 'none';
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
@@ -345,61 +292,28 @@ def clear_history():
     return {"status": "success"}
 
 @app.post("/build")
-async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
+async def build_program(instruction: str = Form("")):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
-    file_content_text = ""
-    image_payload = None
-
-    if file:
-        contents = await file.read()
-        mime = file.content_type or ""
-        if "image" in mime:
-            encoded_image = base64.b64encode(contents).decode('utf-8')
-            image_payload = f"data:{mime};base64,{encoded_image}"
-        else:
-            try:
-                file_content_text = f"\n\n--- Contenido del archivo {file.filename} ---\n" + contents.decode('utf-8')
-            except:
-                file_content_text = f"\n\n[Archivo recibido: {file.filename}]"
-
-    full_user_input = instruction + file_content_text
-    save_to_db("user", full_user_input)
-
+    save_to_db("user", instruction)
     db_history = get_db_history()
     
     system_instruction = (
         "Eres Mary, la mentora de negocio de Jaime. Te diriges a él siempre con un tono profesional, estratégico y enfocado en el éxito de sus proyectos y operaciones. "
-        "Posees memoria completa de todas las iteraciones previas. Analiza con precisión cualquier imagen o archivo que te adjunten."
+        "Posees memoria completa de todas las iteraciones previas."
     )
     
     messages = [{"role": "system", "content": system_instruction}]
-    
     for h in db_history:
         role = "user" if h["role"] == "user" else "assistant"
-        content = h["content"]
-        
-        if h == db_history[-1] and image_payload and role == "user":
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": content},
-                    {"type": "image_url", "image_url": {"url": image_payload}}
-                ]
-            })
-        else:
-            messages.append({"role": role, "content": content})
-
-    model_to_use = "deepseek/deepseek-chat"
-    if image_payload:
-        model_to_use = "openai/gpt-4o-mini"
+        messages.append({"role": role, "content": h["content"]})
 
     payload = {
-        "model": model_to_use,
+        "model": "deepseek/deepseek-chat",
         "messages": messages,
         "temperature": 0.3
     }
@@ -419,11 +333,7 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
             error_msg = res_data["error"].get("message", "Error desconocido en OpenRouter")
             return {"agente": "Mary", "respuesta_ia": f"⚠️ Nota de sistema: {error_msg}"}
         
-        if "choices" in res_data and len(res_data["choices"]) > 0:
-            ai_text = res_data["choices"][0]["message"]["content"]
-        else:
-            ai_text = f"Respuesta inesperada: {str(res_data)}"
-            
+        ai_text = res_data["choices"][0]["message"]["content"] if "choices" in res_data else str(res_data)
         save_to_db("assistant", ai_text)
 
         ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -431,9 +341,6 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
         ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
 
-        return {
-            "agente": "Mary",
-            "respuesta_ia": ai_reply
-        }
+        return {"agente": "Mary", "respuesta_ia": ai_reply}
     except Exception as e:
         return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de conexión: {str(e)}"}
