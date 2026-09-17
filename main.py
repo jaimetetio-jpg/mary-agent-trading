@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="4.0.0")
+app = FastAPI(title="Mary Autonomous AI", version="4.1.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -290,8 +290,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta GEMINI_API_KEY en Render."}
     
-    # Usamos gemini-1.5-flash con la API v1 estándar para evitar bloqueos de cuota innecesarios
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # URL oficial estable
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
@@ -311,34 +311,43 @@ def build_program(req: PromptRequest):
 
     payload = {"contents": contents}
     
-    max_retries = 3
-    backoff_factor = 2
+    # Sistema de reintentos con pausa real de espera interna para que el servidor resuelva el 429 solo
+    max_retries = 4
+    backoff_factor = 3
 
     for attempt in range(max_retries):
         try:
-            response = requests.post(url, json=payload, timeout=30)
+            response = requests.post(url, json=payload, timeout=35)
+            
+            if response.status_code == 429:
+                if attempt < max_retries - 1:
+                    time.sleep(backoff_factor * (attempt + 1))
+                    continue
+                return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor está recibiendo muchas consultas rápidas. Por favor, espera un minuto antes de enviar otro mensaje para que se reinicie tu cuota gratuita en Google."}
+            
             res_data = response.json()
             
             if "error" in res_data:
                 error_msg = res_data["error"].get("message", "Error de API")
-                if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
+                if "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
                     if attempt < max_retries - 1:
-                        time.sleep(backoff_factor ** (attempt + 1))
+                        time.sleep(backoff_factor * (attempt + 1))
                         continue
-                return {"agente": "Mary", "respuesta_ia": f"⚠️ Límite de peticiones alcanzado (Error 429). Espera 30 segundos y vuelve a enviar tu mensaje."}
+                    return {"agente": "Mary", "respuesta_ia": "⚠️ Cuota temporal excedida. Espera un momento y vuelve a intentarlo."}
+                return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
             
             if "candidates" in res_data and len(res_data["candidates"]) > 0:
                 ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
             else:
-                ai_text = "Respuesta vacía."
+                ai_text = "Respuesta vacía del modelo."
                 
             ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
             return {"agente": "Mary", "respuesta_ia": ai_reply}
             
         except Exception as e:
             if attempt < max_retries - 1:
-                time.sleep(backoff_factor ** (attempt + 1))
+                time.sleep(backoff_factor * (attempt + 1))
                 continue
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción: {str(e)}"}
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción de red: {str(e)}"}
     
-    return {"agente": "Mary", "respuesta_ia": "⚠️ Servidor saturado temporalmente."}
+    return {"agente": "Mary", "respuesta_ia": "⚠️ Demasiadas peticiones simultáneas. Por favor descansa 30 segundos y vuelve a escribir."}
