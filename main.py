@@ -1,13 +1,12 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import requests
 import os
 import re
 import sqlite3
-import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.1")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.2")
 
 # --- CONFIGURACIÓN DE BASE DE DATOS (HISTORIAL PERSISTENTE) ---
 DB_FILE = "mary_memory.db"
@@ -61,6 +60,9 @@ def clear_db_history():
     except Exception as e:
         print(f"Error limpiando BD: {e}")
 
+class PromptRequest(BaseModel):
+    instruction: str
+
 @app.get("/", response_class=HTMLResponse)
 def home():
     return """
@@ -69,7 +71,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.1</title>
+        <title>Mary - Neural Engine Pro v5.2</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -182,20 +184,6 @@ def home():
                 border-color: #10b981;
                 box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
             }
-            .file-upload-btn {
-                background: #334155;
-                color: white;
-                padding: 0 14px;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                cursor: pointer;
-                font-size: 1.2rem;
-            }
-            input[type="file"] {
-                display: none;
-            }
             button.send-btn {
                 background: linear-gradient(135deg, #10b981, #059669);
                 color: white;
@@ -205,28 +193,19 @@ def home():
                 border-radius: 12px;
                 cursor: pointer;
             }
-            #fileNameDisplay {
-                font-size: 0.8rem;
-                color: #34d399;
-                display: none;
-            }
         </style>
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.1</h1>
+            <h1>⚡ Mary Pro v5.2</h1>
             <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
         </header>
 
         <div id="chat"></div>
 
         <div class="input-container">
-            <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
             <div class="input-row">
-                <label class="file-upload-btn" title="Adjuntar foto o archivo">
-                    📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
-                </label>
-                <input type="text" id="userInput" placeholder="Escribe tu instrucción o pregunta..." autofocus>
+                <input type="text" id="userInput" placeholder="Escribe tu instrucción o comando para Mary..." autofocus>
                 <button class="send-btn" onclick="send()">Enviar</button>
             </div>
         </div>
@@ -234,8 +213,6 @@ def home():
         <script>
             const chat = document.getElementById('chat');
             const input = document.getElementById('userInput');
-            const fileInput = document.getElementById('fileInput');
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
 
             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
 
@@ -245,7 +222,7 @@ def home():
                     const data = await res.json();
                     chat.innerHTML = '';
                     if (!data.history || data.history.length === 0) {
-                        appendMsg('¡Hola, Jaime! Memoria v5.1 lista. Sube una foto, documento o escribe tu comando.', 'mary', true);
+                        appendMsg('¡Hola, Jaime! Memoria v5.2 sincronizada. ¿Qué analizamos hoy?', 'mary', true);
                     } else {
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
@@ -256,48 +233,25 @@ def home():
                 }
             }
 
-            function showFileName() {
-                if (fileInput.files.length > 0) {
-                    fileNameDisplay.textContent = '📎 ' + fileInput.files[0].name;
-                    fileNameDisplay.style.display = 'block';
-                } else {
-                    fileNameDisplay.style.display = 'none';
-                }
-            }
-
             async function send() {
                 const text = input.value.trim();
-                const file = fileInput.files[0];
-                if (!text && !file) return;
-
-                let displayText = text;
-                if (file) displayText += `<br><em>[Archivo adjunto: ${file.name}]</em>`;
+                if (!text) return;
                 
-                appendMsg(displayText, 'user', true);
-                
+                appendMsg(text, 'user', true);
                 input.value = '';
                 const loadId = appendMsg('Mary procesando...', 'mary');
-
-                const formData = new FormData();
-                formData.append('instruction', text);
-                if (file) {
-                    formData.append('file', file);
-                }
 
                 try {
                     const res = await fetch('/build', {
                         method: 'POST',
-                        body: formData
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ instruction: text })
                     });
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
                     const replyText = data.respuesta_ia || "Error de respuesta.";
-                    
                     appendMsg(replyText, 'mary', true);
-                    
-                    fileInput.value = '';
-                    fileNameDisplay.style.display = 'none';
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
@@ -340,62 +294,27 @@ def clear_history():
     return {"status": "success"}
 
 @app.post("/build")
-async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
+def build_program(req: PromptRequest):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
-    file_content_text = ""
-    image_payload = None
-
-    if file:
-        contents = await file.read()
-        mime = file.content_type or ""
-        if "image" in mime:
-            encoded_image = base64.b64encode(contents).decode('utf-8')
-            image_payload = f"data:{mime};base64,{encoded_image}"
-        else:
-            try:
-                file_content_text = f"\n\n--- Contenido del archivo {file.filename} ---\n" + contents.decode('utf-8')
-            except:
-                file_content_text = f"\n\n[Archivo recibido: {file.filename}]"
-
-    full_user_input = instruction + file_content_text
-    save_to_db("user", full_user_input)
-
+    save_to_db("user", req.instruction)
     db_history = get_db_history()
     
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite, experta en trading, cálculo técnico, estructuras de drywall/PVC y programación. "
-        "Posees memoria completa de todas las iteraciones previas con el usuario. Analiza con precisión cualquier imagen o archivo que te adjunten. "
-        "Sé directa, inteligente y estructurada."
+        "Posees memoria completa de todas las iteraciones previas con el usuario. Sé directa, inteligente y estructurada."
     )
     
     messages = [{"role": "system", "content": system_instruction}]
-    
     for h in db_history:
-        role = "user" if h["role"] == "user" else "assistant"
-        content = h["content"]
-        
-        if h == db_history[-1] and image_payload and role == "user":
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": content},
-                    {"type": "image_url", "image_url": {"url": image_payload}}
-                ]
-            })
-        else:
-            messages.append({"role": role, "content": content})
-
-    model_to_use = "deepseek/deepseek-chat"
-    if image_payload:
-        model_to_use = "openai/gpt-4o-mini"
+        messages.append({"role": "user" if h["role"] == "user" else "assistant", "content": h["content"]})
 
     payload = {
-        "model": model_to_use,
+        "model": "deepseek/deepseek-chat",
         "messages": messages,
         "temperature": 0.3
     }
