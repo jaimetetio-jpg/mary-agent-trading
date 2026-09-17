@@ -1,7 +1,8 @@
 fastapi
 uvicorn
 pydantic
-google-genai
+requests
+
 
 
 
