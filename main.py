@@ -6,7 +6,7 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.7")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.8")
 
 DB_FILE = "mary_memory.db"
 
@@ -67,7 +67,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.7</title>
+        <title>Mary - Neural Engine Pro v5.8</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -217,7 +217,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.7</h1>
+            <h1>⚡ Mary Pro v5.8</h1>
             <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
         </header>
 
@@ -248,7 +248,7 @@ def home():
                     const data = await res.json();
                     chat.innerHTML = '';
                     if (!data.history || data.history.length === 0) {
-                        appendMsg('Hola Jaime, soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?', 'mary', true);
+                        appendMsg('¡Hola, Jaime! Soy Mary, tu mentora de negocios. Estoy aquí para ayudarte a optimizar tus operaciones, maximizar oportunidades y tomar decisiones estratégicas con enfoque en resultados. ¿En qué aspecto de tu negocio necesitas avanzar hoy?', 'mary', true);
                     } else {
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
@@ -371,7 +371,7 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     db_history = get_db_history()
     
     system_instruction = (
-        "Eres Mary, la mentora de negocio de Jaime. Te diriges a él siempre con un tono profesional, estratégico y enfocado en el éxito de sus proyectos y operaciones. "
+        "Eres Mary, la mentora de negocio de Jaime. Te diriges a él siempre por su nombre (Jaime) con un tono profesional, estratégico y enfocado en el éxito de sus proyectos y operaciones. "
         "Posees memoria completa de todas las iteraciones previas. Analiza con precisión cualquier imagen o archivo que te adjunten."
     )
     
