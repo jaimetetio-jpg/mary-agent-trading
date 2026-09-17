@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import requests
+import os
 import re
 
 app = FastAPI(title="Mary Autonomous AI - OpenRouter Engine", version="4.1.0")
@@ -199,8 +200,11 @@ def home():
 
 @app.post("/build")
 def build_program(req: PromptRequest):
-    # API Key integrada directamente
-    api_key = "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"
+    # Lee la clave de forma segura desde las variables de entorno de Render
+    api_key = os.environ.get("OPENROUTER_API_KEY")
+    
+    if not api_key:
+        return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
