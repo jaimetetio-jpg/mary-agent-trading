@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.9.0")
+app = FastAPI(title="Mary Business Mentor - Jaime Edition", version="4.9.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -191,7 +191,7 @@ def home():
         </header>
 
         <div id="chat">
-            <div class="msg mary">Hola Jaime soy Mary tu Mentora de Negocio en que puedo ayudarte?</div>
+            <div class="msg mary">Hola Jaime soy Mary tu Mentora de Negocios en que puedo ayudarte?</div>
         </div>
 
         <div class="input-container">
@@ -226,7 +226,7 @@ def home():
                 input.value = '';
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando con memoria activa...', 'mary');
+                const loadId = appendMsg('Mary analizando...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -237,14 +237,14 @@ def home():
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
-                    const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
+                    const replyText = data.respuesta_ia || "Error: Respuesta vacía.";
                     
                     appendMsg(replyText, 'mary', true);
                     conversationHistory.push({ role: "model", content: replyText });
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
-                    appendMsg('Error de comunicación con el núcleo inteligente.', 'mary');
+                    appendMsg('⚠️ Error de conexión.', 'mary');
                 }
             }
 
@@ -288,10 +288,10 @@ def home():
 def build_program(req: PromptRequest):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
+        return {"agente": "Mary", "respuesta_ia": "Error: Falta la GEMINI_API_KEY en Render."}
     
-    # URL apuntando al modelo base oficial y universal estable
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={api_key}"
+    # URL corregida usando API v1 con el prefijo models/ para gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
@@ -301,22 +301,14 @@ def build_program(req: PromptRequest):
     )
     
     contents = []
-    contents.append({
-        "role": "user",
-        "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
-    })
-    contents.append({
-        "role": "model",
-        "parts": [{"text": "Hola Jaime soy Mary tu Mentora de Negocio en que puedo ayudarte?"}]
-    })
+    contents.append({"role": "user", "parts": [{"text": f"Sistema: {system_instruction}"}]})
+    contents.append({"role": "model", "parts": [{"text": "Hola Jaime soy Mary tu Mentora de Negocios en que puedo ayudarte?"}]})
 
-    for msg in req.history:
-        api_role = "user" if msg.role == "user" else "model"
-        clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
-        contents.append({
-            "role": api_role,
-            "parts": [{"text": clean_content}]
-        })
+    recent_history = req.history[-8:]
+    for msg in recent_history:
+        r = "user" if msg.role == "user" else "model"
+        clean = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("```", "```")
+        contents.append({"role": r, "parts": [{"text": clean}]})
 
     payload = {"contents": contents}
     
@@ -325,11 +317,11 @@ def build_program(req: PromptRequest):
 
     for attempt in range(max_retries):
         try:
-            response = requests.post(url, json=payload, timeout=35)
+            response = requests.post(url, json=payload, timeout=30)
             res_data = response.json()
             
             if "error" in res_data:
-                error_msg = res_data["error"].get("message", "Error desconocido de API")
+                error_msg = res_data["error"].get("message", "Error de API")
                 if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
                     if attempt < max_retries - 1:
                         time.sleep(backoff_factor ** (attempt + 1))
@@ -339,18 +331,15 @@ def build_program(req: PromptRequest):
             if "candidates" in res_data and len(res_data["candidates"]) > 0:
                 ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
             else:
-                ai_text = f"Respuesta inesperada de Google: {str(res_data)}"
+                ai_text = "Respuesta vacía."
                 
-            ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
+            ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "```")
+            return {"agente": "Mary", "respuesta_ia": ai_reply}
             
-            return {
-                "agente": "Mary",
-                "respuesta_ia": ai_reply
-            }
         except Exception as e:
             if attempt < max_retries - 1:
                 time.sleep(backoff_factor ** (attempt + 1))
                 continue
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor tras {max_retries} intentos: {str(e)}"}
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en servidor: {str(e)}"}
     
-    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor de Google está saturado temporalmente. Por favor, intenta de nuevo en unos segundos."}
+    return {"agente": "Mary", "respuesta_ia": "⚠️ Servidor saturado temporalmente."}
