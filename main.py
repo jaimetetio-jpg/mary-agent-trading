@@ -6,7 +6,7 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.8")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.9")
 
 DB_FILE = "mary_memory.db"
 
@@ -67,7 +67,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.8</title>
+        <title>Mary - Neural Engine Pro v5.9</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -87,7 +87,7 @@ def home():
             }
             header {
                 background: linear-gradient(90deg, #1e293b, #0f172a);
-                padding: 12px 20px;
+                padding: 14px 20px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -102,14 +102,13 @@ def home():
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
             }
-            .btn-clear {
-                background: #ef4444;
-                color: white;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 8px;
-                font-size: 0.8rem;
-                cursor: pointer;
+            .status-badge {
+                font-size: 0.75rem;
+                background: rgba(16, 185, 129, 0.15);
+                color: #34d399;
+                padding: 4px 10px;
+                border-radius: 20px;
+                border: 1px solid rgba(16, 185, 129, 0.3);
             }
             #chat {
                 flex: 1;
@@ -217,8 +216,8 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.8</h1>
-            <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
+            <h1>⚡ Mary Pro v5.9</h1>
+            <div class="status-badge">🟢 Conectada</div>
         </header>
 
         <div id="chat"></div>
@@ -308,13 +307,6 @@ def home():
                 }
             }
 
-            async function clearMemory() {
-                if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {
-                    await fetch('/clear', { method: 'POST' });
-                    loadHistory();
-                }
-            }
-
             function appendMsg(html, sender, isHtml = false) {
                 const div = document.createElement('div');
                 div.className = `msg ${sender}`;
@@ -344,6 +336,15 @@ def clear_history():
 
 @app.post("/build")
 async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
+    # Detección de comando de borrado conversacional
+    clean_instruction = instruction.lower().strip()
+    if any(cmd in clean_instruction for cmd in ["borrar memoria", "limpiar memoria", "reiniciar historial", "borrar historial"]):
+        clear_db_history()
+        return {
+            "agente": "Mary",
+            "respuesta_ia": "Memoria de conversación restablecida con éxito, Jaime. Empezamos con el historial limpio. ¿En qué nos enfocamos ahora?"
+        }
+
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
