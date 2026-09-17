@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import os
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.4.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.5.0")
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -198,8 +198,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # Cambiamos al modelo gemini-2.5-flash que es compatible directamente con la ruta v1beta
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    # Actualizado al modelo recomendado por Google: gemini-3.6-flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
     
     payload = {
         "contents": [{
