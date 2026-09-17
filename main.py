@@ -2,9 +2,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
+import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.5.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.6.0")
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -136,7 +137,7 @@ def home():
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Cerebro reconectado con éxito. Pregúntame lo que quieras o pídeme código.</div>
+            <div class="msg mary">¡Hola, jefe! Cerebro reconectado con reintentos automáticos activados. Pregúntame lo que quieras o pídeme código.</div>
         </div>
 
         <div class="input-container">
@@ -157,7 +158,7 @@ def home():
                 appendMsg(text, 'user');
                 input.value = '';
 
-                const loadId = appendMsg('Mary está procesando con IA...', 'mary');
+                const loadId = appendMsg('Mary está procesando con IA (con reintentos automáticos)...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -198,7 +199,6 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # Actualizado al modelo recomendado por Google: gemini-3.6-flash
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key={api_key}"
     
     payload = {
@@ -207,24 +207,38 @@ def build_program(req: PromptRequest):
         }]
     }
     
-    try:
-        response = requests.post(url, json=payload)
-        res_data = response.json()
-        
-        if "error" in res_data:
-            error_msg = res_data["error"].get("message", "Error desconocido de API")
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
-        
-        if "candidates" in res_data and len(res_data["candidates"]) > 0:
-            ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-        else:
-            ai_text = f"Respuesta inesperada de Google: {str(res_data)}"
+    max_retries = 3
+    backoff_factor = 2  # Segundos de espera multiplicativos por intento
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=payload, timeout=30)
+            res_data = response.json()
             
-        ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
-        
-        return {
-            "agente": "Mary",
-            "respuesta_ia": ai_reply
-        }
-    except Exception as e:
-        return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor: {str(e)}"}
+            if "error" in res_data:
+                error_msg = res_data["error"].get("message", "Error desconocido de API")
+                # Si es un error de alta demanda (código 429 o mensaje de alta demanda), reintentamos
+                if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
+                    if attempt < max_retries - 1:
+                        time.sleep(backoff_factor ** (attempt + 1))
+                        continue
+                return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
+            
+            if "candidates" in res_data and len(res_data["candidates"]) > 0:
+                ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                ai_text = f"Respuesta inesperada de Google: {str(res_data)}"
+                
+            ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
+            
+            return {
+                "agente": "Mary",
+                "respuesta_ia": ai_reply
+            }
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(backoff_factor ** (attempt + 1))
+                continue
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor tras {max_retries} intentos: {str(e)}"}
+    
+    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor de Google está saturado temporalmente. Por favor, intenta de nuevo en unos segundos."}
