@@ -6,7 +6,7 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.9")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.0")
 
 DB_FILE = "mary_memory.db"
 
@@ -67,7 +67,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.9</title>
+        <title>Mary - Neural Engine Pro v6.0</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -87,7 +87,7 @@ def home():
             }
             header {
                 background: linear-gradient(90deg, #1e293b, #0f172a);
-                padding: 14px 20px;
+                padding: 12px 20px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
@@ -102,13 +102,18 @@ def home():
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
             }
-            .status-badge {
-                font-size: 0.75rem;
-                background: rgba(16, 185, 129, 0.15);
+            .btn-history {
+                background: rgba(16, 185, 129, 0.2);
                 color: #34d399;
-                padding: 4px 10px;
-                border-radius: 20px;
-                border: 1px solid rgba(16, 185, 129, 0.3);
+                border: 1px solid rgba(16, 185, 129, 0.4);
+                padding: 6px 12px;
+                border-radius: 8px;
+                font-size: 0.85rem;
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+            .btn-history:hover {
+                background: rgba(16, 185, 129, 0.4);
             }
             #chat {
                 flex: 1;
@@ -212,12 +217,94 @@ def home():
                 padding-left: 5px;
                 display: none;
             }
+            /* Modal de Historial */
+            #historyModal {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8);
+                z-index: 100;
+                justify-content: center;
+                align-items: center;
+            }
+            .modal-content {
+                background: #1e293b;
+                border: 1px solid #10b981;
+                border-radius: 16px;
+                width: 90%;
+                max-width: 600px;
+                max-height: 80vh;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
+            }
+            .modal-header {
+                padding: 15px 20px;
+                background: #0f172a;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #334155;
+            }
+            .modal-header h3 {
+                margin: 0;
+                color: #34d399;
+                font-size: 1.1rem;
+            }
+            .close-modal {
+                background: transparent;
+                border: none;
+                color: #94a3b8;
+                font-size: 1.5rem;
+                cursor: pointer;
+            }
+            .modal-body {
+                padding: 20px;
+                overflow-y: auto;
+                flex: 1;
+                font-size: 0.9rem;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+            .history-item {
+                padding: 10px 14px;
+                border-radius: 8px;
+                background: #0f172a;
+                border-left: 3px solid #10b981;
+            }
+            .history-item.user-item {
+                border-left-color: #3b82f6;
+            }
+            .history-role {
+                font-weight: bold;
+                font-size: 0.75rem;
+                color: #94a3b8;
+                margin-bottom: 4px;
+            }
+            .modal-footer {
+                padding: 12px 20px;
+                background: #0f172a;
+                display: flex;
+                justify-content: space-between;
+                border-top: 1px solid #334155;
+            }
+            .btn-danger {
+                background: #ef4444;
+                color: white;
+                border: none;
+                padding: 6px 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.85rem;
+            }
         </style>
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.9</h1>
-            <div class="status-badge">🟢 Conectada</div>
+            <h1>⚡ Mary Pro v6.0</h1>
+            <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
         </header>
 
         <div id="chat"></div>
@@ -233,11 +320,30 @@ def home():
             </div>
         </div>
 
+        <!-- Modal de Historial -->
+        <div id="historyModal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>📜 Historial de Conversación (SQLite)</h3>
+                    <button class="close-modal" onclick="closeHistoryModal()">&times;</button>
+                </div>
+                <div class="modal-body" id="modalHistoryBody">
+                    Cargando historial...
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-danger" onclick="clearMemory()">Borrar Historial</button>
+                    <button class="btn-history" onclick="closeHistoryModal()">Cerrar</button>
+                </div>
+            </div>
+        </div>
+
         <script>
             const chat = document.getElementById('chat');
             const input = document.getElementById('userInput');
             const fileInput = document.getElementById('fileInput');
             const fileNameDisplay = document.getElementById('fileNameDisplay');
+            const historyModal = document.getElementById('historyModal');
+            const modalHistoryBody = document.getElementById('modalHistoryBody');
 
             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') send(); });
 
@@ -256,6 +362,35 @@ def home():
                 } catch(e) {
                     appendMsg('Error cargando historial.', 'mary');
                 }
+            }
+
+            async function openHistoryModal() {
+                historyModal.style.display = 'flex';
+                modalHistoryBody.innerHTML = 'Cargando registros...';
+                try {
+                    const res = await fetch('/history');
+                    const data = await res.json();
+                    modalHistoryBody.innerHTML = '';
+                    if (!data.history || data.history.length === 0) {
+                        modalHistoryBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados en la base de datos todavía.</em>';
+                        return;
+                    }
+                    data.history.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = `history-item ${item.role === 'user' ? 'user-item' : ''}`;
+                        div.innerHTML = `
+                            <div class="history-role">${item.role.toUpperCase()}</div>
+                            <div>${item.content.replace(/<br>/g, '\n')}</div>
+                        `;
+                        modalHistoryBody.appendChild(div);
+                    });
+                } catch(e) {
+                    modalHistoryBody.innerHTML = 'Error al cargar el historial.';
+                }
+            }
+
+            function closeHistoryModal() {
+                historyModal.style.display = 'none';
             }
 
             function showFileName() {
@@ -307,6 +442,14 @@ def home():
                 }
             }
 
+            async function clearMemory() {
+                if(confirm('¿Deseas reiniciar toda la memoria de conversaciones de la base de datos?')) {
+                    await fetch('/clear', { method: 'POST' });
+                    closeHistoryModal();
+                    loadHistory();
+                }
+            }
+
             function appendMsg(html, sender, isHtml = false) {
                 const div = document.createElement('div');
                 div.className = `msg ${sender}`;
@@ -336,15 +479,6 @@ def clear_history():
 
 @app.post("/build")
 async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
-    # Detección de comando de borrado conversacional
-    clean_instruction = instruction.lower().strip()
-    if any(cmd in clean_instruction for cmd in ["borrar memoria", "limpiar memoria", "reiniciar historial", "borrar historial"]):
-        clear_db_history()
-        return {
-            "agente": "Mary",
-            "respuesta_ia": "Memoria de conversación restablecida con éxito, Jaime. Empezamos con el historial limpio. ¿En qué nos enfocamos ahora?"
-        }
-
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
