@@ -6,7 +6,7 @@ import time
 import requests
 import re
 
-app = FastAPI(title="Mary Autonomous AI", version="3.9.5")
+app = FastAPI(title="Mary Autonomous AI", version="3.9.6")
 
 class ChatMessage(BaseModel):
     role: str
@@ -24,7 +24,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Smart Neural Engine v3.9.5</title>
+        <title>Mary - Smart Neural Engine v3.9.6</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -139,11 +139,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Neural Engine v3.9.5</h1>
+            <h1>🔮 Mary - Smart Neural Engine v3.9.6</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Núcleo optimizado y listo. ¿En qué trabajamos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo v3.9.6 estable en línea. ¿En qué trabajamos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -212,7 +212,7 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    # URL apuntando estrictamente al modelo oficial gemini-1.5-flash y v1beta
+    # URL corregida utilizando gemini-1.5-flash estable en v1beta
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
@@ -243,7 +243,6 @@ def build_program(req: PromptRequest):
         "contents": contents
     }
     
-    # Sistema de reintentos inteligentes para evitar bloqueos por saturación momentánea
     max_retries = 3
     backoff_base = 2
 
@@ -254,8 +253,7 @@ def build_program(req: PromptRequest):
             
             if "error" in res_data:
                 error_msg = res_data["error"].get("message", "Error desconocido de API")
-                # Si la cuota o tráfico satura momentáneamente, reintentamos de forma inteligente
-                if any(x in error_msg.lower() for x in ["resourceexhausted", "quota", "high demand", "429", "overloaded"]):
+                if any(x in error_msg.lower() for x in ["resourceexhausted", "quota", "high demand", "429", "overloaded", "not found"]):
                     if attempt < max_retries - 1:
                         time.sleep(backoff_base ** attempt)
                         continue
@@ -266,7 +264,6 @@ def build_program(req: PromptRequest):
             else:
                 ai_text = f"Respuesta inesperada: {str(res_data)}"
                 
-            # Procesamiento visual limpio para código y saltos de línea
             ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             ai_reply = ai_reply.replace("\n", "<br>")
             ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
