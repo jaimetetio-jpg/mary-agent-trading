@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import os
 import requests
 
-app = FastAPI(title="Mary Autonomous AI")
+app = FastAPI(title="Mary Autonomous AI", version="5.0.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -289,7 +289,8 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta GEMINI_API_KEY en Render."}
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    # Usando gemini-2.5-flash y versión v1 estable para evitar conflictos
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
