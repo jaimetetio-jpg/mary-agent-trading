@@ -4,7 +4,7 @@ from pydantic import BaseModel
 import os
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.2.0")
+app = FastAPI(title="Mary Autonomous AI", version="3.3.0")
 
 class PromptRequest(BaseModel):
     instruction: str
@@ -168,7 +168,6 @@ def home():
                     const data = await res.json();
                     
                     document.getElementById(loadId).remove();
-                    // AQUÍ ESTÁ LA CORRECCIÓN CLAVE: leemos data.respuesta_ia con seguridad
                     const replyText = data.respuesta_ia || "Error: Respuesta vacía del servidor.";
                     appendMsg(replyText, 'mary', true);
                 } catch (err) {
@@ -197,9 +196,10 @@ def home():
 def build_program(req: PromptRequest):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise HTTPException(status_code=500, detail="Falta configurar la GEMINI_API_KEY en Render")
+        return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    # Usamos gemini-1.5-flash que es el modelo estándar más robusto y compatible
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     payload = {
         "contents": [{
@@ -211,11 +211,16 @@ def build_program(req: PromptRequest):
         response = requests.post(url, json=payload)
         res_data = response.json()
         
-        # Extraer con seguridad el texto de la respuesta de Google
+        # Si Google devuelve un error en el JSON, lo capturamos y mostramos claramente
+        if "error" in res_data:
+            error_msg = res_data["error"].get("message", "Error desconocido de API")
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
+        
+        # Extraer el texto de la respuesta con seguridad
         if "candidates" in res_data and len(res_data["candidates"]) > 0:
             ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
         else:
-            ai_text = f"Respuesta cruda: {str(res_data)}"
+            ai_text = f"Respuesta inesperada de Google: {str(res_data)}"
             
         ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
         
@@ -224,4 +229,4 @@ def build_program(req: PromptRequest):
             "respuesta_ia": ai_reply
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor: {str(e)}"}
