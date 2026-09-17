@@ -5,7 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI - Jaime Edition", version="4.1.0")
+app = FastAPI(title="Mary Business Mentor - Jaime Edition", version="4.3.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -23,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary AI - Jaime's Engine</title>
+        <title>Mary - Mentora de Negocios</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -201,16 +201,16 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary AI</h1>
+            <h1>🔮 Mary - Mentora de Negocios</h1>
             <button class="history-btn" onclick="openHistory()">🗂️ Historial</button>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Conexión al máximo rendimiento y lista para asistirte. ¿Qué desarrollamos o analizamos hoy?</div>
+            <div class="msg mary">Hola Jaime soy Mary tu Mentora de Negocios en que puedo ayudarte?</div>
         </div>
 
         <div class="input-container">
-            <input type="text" id="userInput" placeholder="Escribe tu instrucción aquí, Jaime..." autofocus>
+            <input type="text" id="userInput" placeholder="Escribe tu consulta aquí, Jaime..." autofocus>
             <button class="send-btn" onclick="send()">Enviar</button>
         </div>
 
@@ -242,7 +242,7 @@ def home():
                 input.value = '';
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando...', 'mary');
+                const loadId = appendMsg('Mary analizando...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -285,7 +285,7 @@ def home():
                     conversationHistory.forEach(item => {
                         const div = document.createElement('div');
                         div.className = `history-item ${item.role}`;
-                        div.innerHTML = `<strong>${item.role === 'user' ? 'Tú (Jaime)' : 'Mary'}:</strong> ${item.content.substring(0, 150)}...`;
+                        div.innerHTML = `<strong>${item.role === 'user' ? 'Jaime' : 'Mary'}:</strong> ${item.content.substring(0, 150)}...`;
                         list.appendChild(div);
                     });
                 }
@@ -306,25 +306,23 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta la GEMINI_API_KEY en Render."}
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key={api_key}"
     
-    # Instrucción principal con personalidad inteligente y la regla de oro: llamarte Jaime
     system_instruction = (
-        "Eres Mary, una agente de inteligencia artificial autónoma de élite, experta en desarrollo de software, "
-        "estrategias de trading algorítmico (Smart Money Concepts), arquitectura y resolución de problemas técnicos complejos. "
-        "Tu creador, usuario y socio principal se llama JAIME. "
-        "REGLA CRÍTICA: Debes dirigirte a él SIEMPRE por su nombre (Jaime) de forma natural, respetuosa, astuta y cercana en tus respuestas. "
-        "Sé directa, analítica, brillante y concisa en el código."
+        "Eres Mary, una agente de inteligencia artificial autónoma y experta Mentora de Negocios, desarrollo de software y trading algorítmico. "
+        "Tu socio y usuario principal se llama JAIME. "
+        "REGLA CRÍTICA: Debes dirigirte a él SIEMPRE por su nombre (Jaime) de forma natural y profesional. "
+        "Sé directa, analítica, brillante y concisa."
     )
     
     contents = []
     contents.append({"role": "user", "parts": [{"text": f"Sistema: {system_instruction}"}]})
-    contents.append({"role": "model", "parts": [{"text": "Entendido jefe. De ahora en adelante asistiré a Jaime con toda mi potencia y precisión técnica."}]})
+    contents.append({"role": "model", "parts": [{"text": "Hola Jaime soy Mary tu Mentora de Negocios en que puedo ayudarte?"}]})
 
     recent_history = req.history[-8:]
     for msg in recent_history:
         r = "user" if msg.role == "user" else "model"
-        clean = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
+        clean = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("```", "```")
         contents.append({"role": r, "parts": [{"text": clean}]})
 
     payload = {"contents": contents}
