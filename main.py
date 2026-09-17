@@ -5,13 +5,7 @@ import os
 import time
 import requests
 
-app = FastAPI(title="Mary Autonomous AI", version="3.8.0")
-
-MODELOS_DISPONIBLES = [
-    "gemini-1.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-pro"
-]
+app = FastAPI(title="Mary Autonomous AI", version="3.9.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -103,6 +97,7 @@ def home():
                 overflow-x: auto;
                 font-family: 'Courier New', Courier, monospace;
                 border: 1px solid rgba(56, 189, 248, 0.2);
+                white-space: pre-wrap;
             }
             .input-container {
                 background: rgba(15, 23, 42, 0.9);
@@ -143,11 +138,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Smart Autonomous Engine</h1>
+            <h1>🔮 Mary - Smart Neural Engine v3.9</h1>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Memoria inteligente y núcleo multimodelo activos. ¿En qué proyecto o estrategia avanzamos hoy?</div>
+            <div class="msg mary">¡Hola, Jaime! Núcleo optimizado y parser de código reparado. ¿Qué avanzamos hoy?</div>
         </div>
 
         <div class="input-container">
@@ -171,7 +166,7 @@ def home():
 
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando con multimodelo activo...', 'mary');
+                const loadId = appendMsg('Mary procesando directiva...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -216,45 +211,77 @@ def build_program(req: PromptRequest):
     if not api_key:
         return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
     
+    # Usamos la ruta oficial estable v1 con gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+    
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
         "Posees un razonamiento avanzado, alta capacidad de análisis técnico y destreza en programación web y Python. "
         "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
     )
     
-    contents = [
-        {"role": "user", "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]},
-        {"role": "model", "parts": [{"text": "Entendido, jefe. Mantendré un perfil inteligente, técnico, directo y con memoria activa de nuestra sesión."}]}
-    ]
+    contents = []
+    
+    # Inyectamos el prompt de sistema como contenido inicial
+    contents.append({
+        "role": "user",
+        "parts": [{"text": f"[Instrucción del Sistema]: {system_instruction}"}]
+    })
+    contents.append({
+        "role": "model",
+        "parts": [{"text": "Entendido, jefe. Mantendré un perfil inteligente, técnico, directo y con memoria activa de nuestra sesión."}]
+    })
 
     for msg in req.history:
         api_role = "user" if msg.role == "user" else "model"
         clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
-        contents.append({"role": api_role, "parts": [{"text": clean_content}]})
+        contents.append({
+            "role": api_role,
+            "parts": [{"text": clean_content}]
+        })
 
-    payload = {"contents": contents}
+    payload = {
+        "contents": contents
+    }
     
-    # Estrategia Multimodelo con Fallback Autónomo
-    for model_name in MODELOS_DISPONIBLES:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-        
-        for attempt in range(2):
-            try:
-                response = requests.post(url, json=payload, timeout=25)
-                res_data = response.json()
-                
-                if "candidates" in res_data and len(res_data["candidates"]) > 0:
-                    ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                    ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
-                    return {"agente": "Mary", "respuesta_ia": ai_reply}
-                
-                if "error" in res_data:
-                    error_msg = res_data["error"].get("message", "")
-                    if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or response.status_code == 429:
-                        time.sleep(1)
-                        break
-            except Exception:
-                time.sleep(1)
-                break
+    max_retries = 3
+    backoff_factor = 2
 
-    return {"agente": "Mary", "respuesta_ia": "⚠️ Todos los nodos de la API están bajo alta carga. Reintenta en 5 segundos."}
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(url, json=payload, timeout=30)
+            res_data = response.json()
+            
+            if "error" in res_data:
+                error_msg = res_data["error"].get("message", "Error desconocido de API")
+                if attempt < max_retries - 1:
+                    time.sleep(backoff_factor ** (attempt + 1))
+                    continue
+                return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de Google AI: {error_msg}"}
+            
+            if "candidates" in res_data and len(res_data["candidates"]) > 0:
+                ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
+            else:
+                ai_text = f"Respuesta inesperada: {str(res_data)}"
+                
+            # Procesamiento de formato: convertimos bloques markdown ```python a <pre><code> para que no se rompa visualmente
+            ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            ai_reply = ai_reply.replace("&lt;br&gt;", "<br>").replace("\n", "<br>")
+            
+            # Formatear bloques de código correctamente con etiquetas HTML seguras
+            import re
+            ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
+            ai_reply = ai_reply.replace("&lt;pre&gt;", "<pre>").replace("&lt;/pre&gt;", "</pre>")
+            ai_reply = ai_reply.replace("&lt;code&gt;", "<code>").replace("&lt;/code&gt;", "</code></pre>")
+
+            return {
+                "agente": "Mary",
+                "respuesta_ia": ai_reply
+            }
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(backoff_factor ** (attempt + 1))
+                continue
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor: {str(e)}"}
+    
+    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor está experimentando alta carga. Intenta de nuevo."}
