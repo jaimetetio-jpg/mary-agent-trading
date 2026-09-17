@@ -6,9 +6,8 @@ import os
 import re
 import sqlite3
 import base64
-import json
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.0")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="5.0.1")
 
 # --- CONFIGURACIÓN DE BASE DE DATOS (HISTORIAL PERSISTENTE) ---
 DB_FILE = "mary_memory.db"
@@ -61,7 +60,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v5.0</title>
+        <title>Mary - Neural Engine Pro v5.0.1</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -144,11 +143,6 @@ def home():
                 border: 1px solid rgba(52, 211, 153, 0.2);
                 white-space: pre-wrap;
             }
-            img.preview {
-                max-width: 100%;
-                border-radius: 8px;
-                margin-top: 8px;
-            }
             .input-container {
                 background: rgba(15, 23, 42, 0.9);
                 padding: 15px 20px;
@@ -211,13 +205,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v5.0</h1>
+            <h1>⚡ Mary Pro v5.0.1</h1>
             <button class="btn-clear" onclick="clearMemory()">Borrar Memoria</button>
         </header>
 
-        <div id="chat">
-            <!-- El historial se cargará aquí -->
-        </div>
+        <div id="chat"></div>
 
         <div class="input-container">
             <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
@@ -244,7 +236,7 @@ def home():
                     const data = await res.json();
                     chat.innerHTML = '';
                     if (data.history.length === 0) {
-                        appendMsg('¡Hola, Jaime! Memoria sincronizada v5.0 lista. Sube una foto, documento o escribe tu comando.', 'mary', true);
+                        appendMsg('¡Hola, Jaime! Memoria v5.0.1 sincronizada. Sube una foto, documento o escribe tu comando.', 'mary', true);
                     } else {
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
@@ -295,7 +287,6 @@ def home():
                     
                     appendMsg(replyText, 'mary', true);
                     
-                    // Limpiar archivo seleccionado
                     fileInput.value = '';
                     fileNameDisplay.style.display = 'none';
 
@@ -324,7 +315,6 @@ def home():
                 return id;
             }
 
-            // Cargar historial al iniciar
             loadHistory();
         </script>
     </body>
@@ -355,22 +345,17 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         contents = await file.read()
         mime = file.content_type or ""
         if "image" in mime:
-            # Si es imagen, la codificamos en base64 para enviarla en la peticion multimodal de OpenRouter
             encoded_image = base64.b64encode(contents).decode('utf-8')
             image_payload = f"data:{mime};base64,{encoded_image}"
         else:
-            # Si es archivo de texto o código
             try:
                 file_content_text = f"\n\n--- Contenido del archivo {file.filename} ---\n" + contents.decode('utf-8')
             except:
                 file_content_text = f"\n\n[Archivo recibido: {file.filename}]"
 
     full_user_input = instruction + file_content_text
-
-    # Guardar entrada del usuario en base de datos local
     save_to_db("user", full_user_input)
 
-    # Construir historial para OpenRouter
     db_history = get_db_history()
     
     system_instruction = (
@@ -385,7 +370,6 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         role = "user" if h["role"] == "user" else "assistant"
         content = h["content"]
         
-        # Si es el último mensaje del usuario y hay imagen adjunta, estructurarlo de forma multimodal
         if h == db_history[-1] and image_payload and role == "user":
             messages.append({
                 "role": "user",
@@ -397,15 +381,16 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         else:
             messages.append({"role": role, "content": content})
 
+    # Modelo por defecto rápido (deepseek-chat), pero si hay imagen cambiamos a gpt-4o-mini de OpenRouter que soporta visión perfectamente
+    model_to_use = "deepseek/deepseek-chat"
+    if image_payload:
+        model_to_use = "openai/gpt-4o-mini"
+
     payload = {
-        "model": "deepseek/deepseek-chat",  # O puedes usar un modelo multimodal si prefieres como 'google/gemini-flash-1.5' o 'openai/gpt-4o-mini'
+        "model": model_to_use,
         "messages": messages,
         "temperature": 0.3
     }
-    
-    # Si se adjuntó una imagen, cambiamos automáticamente a un modelo con soporte visual superior como gpt-4o-mini o gemini-flash
-    if image_payload:
-        payload["model"] = "openai/gpt-4o-mini"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -427,12 +412,11 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         else:
             ai_text = f"Respuesta inesperada: {str(res_data)}"
             
-        # Guardar respuesta de la IA en la base de datos
         save_to_db("assistant", ai_text)
 
         ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
         ai_reply = ai_reply.replace("\n", "<br>")
-        ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=logics:=re.DOTALL) if 'logics' in globals() else re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
+        ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
         ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
 
         return {
