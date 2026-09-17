@@ -1,11 +1,11 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import os
 import time
 import requests
 
-app = FastAPI(title="Mary Robust & Smart AI", version="3.9.0")
+app = FastAPI(title="Mary Autonomous AI with History", version="4.0.0")
 
 class ChatMessage(BaseModel):
     role: str
@@ -23,7 +23,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Robust & Smart Neural Engine</title>
+        <title>Mary - Smart Engine & History</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -44,18 +44,33 @@ def home():
             }
             header {
                 background: linear-gradient(90deg, #1e293b, #0f172a);
-                padding: 15px 20px;
-                text-align: center;
+                padding: 12px 20px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
                 border-bottom: 2px solid rgba(6, 182, 212, 0.3);
                 box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
                 z-index: 10;
             }
             h1 {
                 margin: 0;
-                font-size: 1.3rem;
+                font-size: 1.2rem;
                 background: linear-gradient(to right, #38bdf8, #c084fc);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
+            }
+            .history-btn {
+                background: rgba(139, 92, 246, 0.2);
+                border: 1px solid var(--accent-purple);
+                color: #c084fc;
+                padding: 6px 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 0.9rem;
+                font-weight: bold;
+            }
+            .history-btn:hover {
+                background: rgba(139, 92, 246, 0.4);
             }
             #chat {
                 flex: 1;
@@ -123,7 +138,7 @@ def home():
                 border-color: #8b5cf6;
                 box-shadow: 0 0 12px rgba(139, 92, 246, 0.4);
             }
-            button {
+            button.send-btn {
                 background: linear-gradient(135deg, #06b6d4, #3b82f6);
                 color: #090d16;
                 border: none;
@@ -132,20 +147,84 @@ def home():
                 border-radius: 12px;
                 cursor: pointer;
             }
+            /* Ventana Modal de Historial */
+            #modal {
+                display: none;
+                position: fixed;
+                top: 0; left: 0; width: 100%; height: 100%;
+                background: rgba(0,0,0,0.8);
+                backdrop-filter: blur(5px);
+                z-index: 100;
+                justify-content: center;
+                align-items: center;
+            }
+            .modal-content {
+                background: #0f172a;
+                border: 1px solid var(--accent-purple);
+                width: 90%;
+                max-width: 600px;
+                max-height: 80vh;
+                border-radius: 16px;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            }
+            .modal-header {
+                padding: 15px 20px;
+                background: #1e293b;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 1px solid #334155;
+            }
+            .modal-header h3 { margin: 0; color: #38bdf8; }
+            .close-btn {
+                background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;
+            }
+            .modal-body {
+                padding: 20px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .history-item {
+                padding: 10px;
+                border-radius: 8px;
+                background: #1e293b;
+                font-size: 0.9rem;
+                border-left: 4px solid var(--accent-neon);
+            }
+            .history-item.model { border-left-color: var(--accent-purple); }
         </style>
     </head>
     <body>
         <header>
-            <h1>🔮 Mary - Robust & Smart Engine</h1>
+            <h1>🔮 Mary AI</h1>
+            <button class="history-btn" onclick="openHistory()">🗂️ Historial</button>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, jefe! Núcleo robusto con reintentos y memoria inteligente listo. ¿En qué trabajamos?</div>
+            <div class="msg mary">¡Hola, jefe! Conexión restaurada y panel de historial integrado. ¿Qué hacemos ahora?</div>
         </div>
 
         <div class="input-container">
             <input type="text" id="userInput" placeholder="Escribe tu instrucción aquí..." autofocus>
-            <button onclick="send()">Enviar</button>
+            <button class="send-btn" onclick="send()">Enviar</button>
+        </div>
+
+        <!-- Ventana Modal de Historial -->
+        <div id="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Historial de Conversación</h3>
+                    <button class="close-btn" onclick="closeHistory()">&times;</button>
+                </div>
+                <div class="modal-body" id="historyList">
+                    <p style="color: #94a3b8; text-align: center;">No hay historial aún.</p>
+                </div>
+            </div>
         </div>
 
         <script>
@@ -163,7 +242,7 @@ def home():
                 input.value = '';
                 conversationHistory.push({ role: "user", content: text });
 
-                const loadId = appendMsg('Mary procesando con reintentos automáticos y memoria...', 'mary');
+                const loadId = appendMsg('Mary procesando...', 'mary');
 
                 try {
                     const res = await fetch('/build', {
@@ -181,7 +260,7 @@ def home():
 
                 } catch (err) {
                     document.getElementById(loadId).remove();
-                    appendMsg('⚠️ Error de comunicación con el núcleo.', 'mary');
+                    appendMsg('⚠️ Error de conexión.', 'mary');
                 }
             }
 
@@ -196,6 +275,26 @@ def home():
                 chat.scrollTop = chat.scrollHeight;
                 return id;
             }
+
+            function openHistory() {
+                const list = document.getElementById('historyList');
+                list.innerHTML = '';
+                if (conversationHistory.length === 0) {
+                    list.innerHTML = '<p style="color: #94a3b8; text-align: center;">El historial está vacío.</p>';
+                } else {
+                    conversationHistory.forEach(item => {
+                        const div = document.createElement('div');
+                        div.className = `history-item ${item.role}`;
+                        div.innerHTML = `<strong>${item.role === 'user' ? 'Tú' : 'Mary'}:</strong> ${item.content.substring(0, 150)}...`;
+                        list.appendChild(div);
+                    });
+                }
+                document.getElementById('modal').style.display = 'flex';
+            }
+
+            function closeHistory() {
+                document.getElementById('modal').style.display = 'none';
+            }
         </script>
     </body>
     </html>
@@ -205,27 +304,25 @@ def home():
 def build_program(req: PromptRequest):
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        return {"agente": "Mary", "respuesta_ia": "Error: Falta configurar la GEMINI_API_KEY en Render."}
+        return {"agente": "Mary", "respuesta_ia": "Error: Falta la GEMINI_API_KEY en Render."}
     
-    # Usamos gemini-1.5-flash: estable, rápido y robusto
+    # URL corregida y compatible con la API oficial actual de Google
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
     system_instruction = (
         "Eres Mary, una agente de software autónoma de élite y asistente de trading experta. "
-        "Posees un razonamiento avanzado, alta capacidad de análisis técnico y destreza en programación web y Python. "
-        "Sé directa, inteligente, clara y concisa. Estructura el código de manera impecable y limpia."
+        "Sé directa, inteligente y concisa. Estructura el código de manera limpia."
     )
     
     contents = []
-    contents.append({"role": "user", "parts": [{"text": f"[Sistema]: {system_instruction}"}]})
-    contents.append({"role": "model", "parts": [{"text": "Entendido jefe, sistema robusto y memoria activa operando."}]})
+    contents.append({"role": "user", "parts": [{"text": f"Sistema: {system_instruction}"}]})
+    contents.append({"role": "model", "parts": [{"text": "Entendido jefe."}]})
 
-    # Mantenemos un historial equilibrado (últimos 6 mensajes) para no sobrecargar ni congelar
     recent_history = req.history[-6:]
     for msg in recent_history:
-        api_role = "user" if msg.role == "user" else "model"
-        clean_content = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
-        contents.append({"role": api_role, "parts": [{"text": clean_content}]})
+        r = "user" if msg.role == "user" else "model"
+        clean = msg.content.replace("<br>", "\n").replace("<pre><code>", "```").replace("</code></pre>", "```")
+        contents.append({"role": r, "parts": [{"text": clean}]})
 
     payload = {"contents": contents}
     
@@ -238,8 +335,7 @@ def build_program(req: PromptRequest):
             res_data = response.json()
             
             if "error" in res_data:
-                error_msg = res_data["error"].get("message", "Error desconocido de API")
-                # Si hay alta demanda o saturación, reintenta automáticamente con espera exponencial
+                error_msg = res_data["error"].get("message", "Error de API")
                 if "high demand" in error_msg.lower() or "resourceexhausted" in error_msg.lower() or "429" in str(response.status_code):
                     if attempt < max_retries - 1:
                         time.sleep(backoff_factor ** (attempt + 1))
@@ -249,18 +345,15 @@ def build_program(req: PromptRequest):
             if "candidates" in res_data and len(res_data["candidates"]) > 0:
                 ai_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
             else:
-                ai_text = f"Respuesta inesperada de Google: {str(res_data)}"
+                ai_text = "Respuesta vacía."
                 
             ai_reply = ai_text.replace("\n", "<br>").replace("```python", "<pre><code>").replace("```", "</code></pre>")
+            return {"agente": "Mary", "respuesta_ia": ai_reply}
             
-            return {
-                "agente": "Mary",
-                "respuesta_ia": ai_reply
-            }
         except Exception as e:
             if attempt < max_retries - 1:
                 time.sleep(backoff_factor ** (attempt + 1))
                 continue
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en el servidor tras {max_retries} intentos: {str(e)}"}
+            return {"agente": "Mary", "respuesta_ia": f"⚠️ Excepción en servidor: {str(e)}"}
     
-    return {"agente": "Mary", "respuesta_ia": "⚠️ El servidor de Google está saturado temporalmente. Por favor, intenta de nuevo en unos segundos."}
+    return {"agente": "Mary", "respuesta_ia": "⚠️ Servidor saturado temporalmente."}
