@@ -6,9 +6,9 @@ import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.12")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.13")
 
-DB_FILE = "mary_memory_v12.db"
+DB_FILE = "mary_memory_v13.db"
 
 def init_db():
     try:
@@ -78,19 +78,19 @@ def home():
         content_formatted = msg["content"].replace("\n", "<br>")
         chat_html += f'<div class="msg {role_class}">{content_formatted}</div>'
 
-    html_content = f"""<!DOCTYPE html>
+    html_template = """<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.12</title>
+    <title>Mary - Neural Engine Pro v6.13</title>
     <style>
-        :root {{
+        :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
             --accent-neon: #10b981;
             --text-main: #f8fafc;
-        }}
-        body {{
+        }
+        body {
             background: var(--bg-gradient);
             color: var(--text-main);
             font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
@@ -100,8 +100,8 @@ def home():
             flex-direction: column;
             height: 100dvh;
             overflow: hidden;
-        }}
-        header {{
+        }
+        header {
             background: linear-gradient(90deg, #1e293b, #0f172a);
             padding: 10px 15px;
             display: flex;
@@ -111,15 +111,15 @@ def home():
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
             flex-shrink: 0;
             z-index: 10;
-        }}
-        h1 {{
+        }
+        h1 {
             margin: 0;
             font-size: 1.1rem;
             background: linear-gradient(to right, #34d399, #60a5fa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-        }}
-        .btn-history {{
+        }
+        .btn-history {
             background: rgba(16, 185, 129, 0.2);
             color: #34d399;
             border: 1px solid rgba(16, 185, 129, 0.4);
@@ -127,8 +127,8 @@ def home():
             border-radius: 8px;
             font-size: 0.8rem;
             cursor: pointer;
-        }}
-        #chat {{
+        }
+        #chat {
             flex: 1;
             overflow-y: auto;
             padding: 15px;
@@ -139,26 +139,26 @@ def home():
             width: 100%;
             margin: 0 auto;
             box-sizing: border-box;
-        }}
-        .msg {{
+        }
+        .msg {
             padding: 12px 16px;
             border-radius: 14px;
             max-width: 88%;
             word-break: break-word;
             line-height: 1.4;
             font-size: 0.95rem;
-        }}
-        .mary {{
+        }
+        .mary {
             background: linear-gradient(145deg, #1e293b, #0f172a);
             border: 1px solid rgba(16, 185, 129, 0.3);
             align-self: flex-start;
-        }}
-        .user {{
+        }
+        .user {
             background: linear-gradient(135deg, #059669, #047857);
             color: white;
             align-self: flex-end;
-        }}
-        pre {{
+        }
+        pre {
             background: #05070c;
             padding: 10px;
             border-radius: 8px;
@@ -167,8 +167,8 @@ def home():
             font-family: monospace;
             border: 1px solid rgba(52, 211, 153, 0.2);
             white-space: pre-wrap;
-        }}
-        .input-container {{
+        }
+        .input-container {
             background: rgba(15, 23, 42, 0.98);
             padding: 10px 15px;
             display: flex;
@@ -180,13 +180,13 @@ def home():
             box-sizing: border-box;
             border-top: 2px solid rgba(16, 185, 129, 0.3);
             flex-shrink: 0;
-        }}
-        .input-row {{
+        }
+        .input-row {
             display: flex;
             gap: 8px;
             align-items: center;
-        }}
-        input[type="text"] {{
+        }
+        input[type="text"] {
             flex: 1;
             min-width: 0;
             background: #0b0f19;
@@ -196,12 +196,12 @@ def home():
             color: white;
             font-size: 1rem;
             outline: none;
-        }}
-        input[type="text"]:focus {{
+        }
+        input[type="text"]:focus {
             border-color: #10b981;
             box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
-        }}
-        .file-upload-btn {{
+        }
+        .file-upload-btn {
             background: #334155;
             color: white;
             padding: 0 10px;
@@ -213,11 +213,11 @@ def home():
             cursor: pointer;
             font-size: 1.1rem;
             flex-shrink: 0;
-        }}
-        input[type="file"] {{
+        }
+        input[type="file"] {
             display: none;
-        }}
-        button.send-btn {{
+        }
+        button.send-btn {
             background: linear-gradient(135deg, #10b981, #059669);
             color: white;
             border: none;
@@ -228,14 +228,14 @@ def home():
             cursor: pointer;
             flex-shrink: 0;
             font-size: 0.9rem;
-        }}
-        #fileNameDisplay {{
+        }
+        #fileNameDisplay {
             font-size: 0.75rem;
             color: #34d399;
             padding-left: 2px;
             display: none;
-        }}
-        #historyModal {{
+        }
+        #historyModal {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -243,8 +243,8 @@ def home():
             z-index: 100;
             justify-content: center;
             align-items: center;
-        }}
-        .modal-content {{
+        }
+        .modal-content {
             background: #1e293b;
             border: 1px solid #10b981;
             border-radius: 14px;
@@ -254,28 +254,28 @@ def home():
             display: flex;
             flex-direction: column;
             overflow: hidden;
-        }}
-        .modal-header {{
+        }
+        .modal-header {
             padding: 12px 16px;
             background: #0f172a;
             display: flex;
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #334155;
-        }}
-        .modal-header h3 {{
+        }
+        .modal-header h3 {
             margin: 0;
             color: #34d399;
             font-size: 1rem;
-        }}
-        .close-modal {{
+        }
+        .close-modal {
             background: transparent;
             border: none;
             color: #94a3b8;
             font-size: 1.4rem;
             cursor: pointer;
-        }}
-        .modal-body {{
+        }
+        .modal-body {
             padding: 15px;
             overflow-y: auto;
             flex: 1;
@@ -283,30 +283,30 @@ def home():
             display: flex;
             flex-direction: column;
             gap: 10px;
-        }}
-        .history-item {{
+        }
+        .history-item {
             padding: 8px 12px;
             border-radius: 6px;
             background: #0f172a;
             border-left: 3px solid #10b981;
-        }}
-        .history-item.user-item {{
+        }
+        .history-item.user-item {
             border-left-color: #3b82f6;
-        }}
-        .history-role {{
+        }
+        .history-role {
             font-weight: bold;
             font-size: 0.7rem;
             color: #94a3b8;
             margin-bottom: 3px;
-        }}
-        .modal-footer {{
+        }
+        .modal-footer {
             padding: 10px 16px;
             background: #0f172a;
             display: flex;
             justify-content: space-between;
             border-top: 1px solid #334155;
-        }}
-        .btn-danger {{
+        }
+        .btn-danger {
             background: #ef4444;
             color: white;
             border: none;
@@ -314,17 +314,17 @@ def home():
             border-radius: 6px;
             cursor: pointer;
             font-size: 0.8rem;
-        }}
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>⚡ Mary Pro v6.12</h1>
+        <h1>⚡ Mary Pro v6.13</h1>
         <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
     </header>
 
     <div id="chat">
-        {chat_html}
+        __CHAT_CONTENT__
     </div>
 
     <div class="input-container">
@@ -363,14 +363,14 @@ def home():
         const fileNameDisplay = document.getElementById('fileNameDisplay');
         const sendButton = document.getElementById('sendButton');
 
-        input.addEventListener('keypress', (e) => {{
-            if (e.key === 'Enter') {{
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
                 e.preventDefault();
                 sendMsg();
-            }}
-        }});
+            }
+        });
 
-        async function sendMsg() {{
+        async function sendMsg() {
             const text = input.value.trim();
             const file = fileInput.files[0];
             if (!text && !file) return;
@@ -379,7 +379,7 @@ def home():
             sendButton.textContent = 'Enviando...';
 
             let userDisplay = text;
-            if (file) userDisplay += `<br><em>[Archivo adjunto: ${{file.name}}]</em>`;
+            if (file) userDisplay += `<br><em>[Archivo adjunto: ${file.name}]</em>`;
             appendMessage(userDisplay, 'user');
 
             input.value = '';
@@ -392,11 +392,11 @@ def home():
 
             const maryDiv = appendMessage('', 'mary');
 
-            try {{
-                const response = await fetch('/build', {{
+            try {
+                const response = await fetch('/build', {
                     method: 'POST',
                     body: formData
-                }});
+                });
 
                 if (!response.ok) throw new Error('Error en el servidor');
 
@@ -404,85 +404,85 @@ def home():
                 const decoder = new TextDecoder('utf-8');
                 let rawText = '';
 
-                while (true) {{
-                    const {{ value, done }} = await reader.read();
+                while (true) {
+                    const { value, done } = await reader.read();
                     if (done) break;
-                    const chunk = decoder.decode(value, {{ stream: true }});
+                    const chunk = decoder.decode(value, { stream: true });
                     rawText += chunk;
                     
                     let formatted = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     formatted = formatted.replace(/\\n/g, '<br>');
                     maryDiv.innerHTML = formatted;
                     chat.scrollTop = chat.scrollHeight;
-                }}
-            } catch (err) {{
+                }
+            } catch (err) {
                 maryDiv.innerHTML = '⚠️ Error de conexión en tiempo real.';
-            }} finally {{
+            } finally {
                 sendButton.disabled = false;
                 sendButton.textContent = 'Enviar';
                 input.focus();
-            }}
-        }}
+            }
+        }
 
-        function appendMessage(html, sender) {{
+        function appendMessage(html, sender) {
             const div = document.createElement('div');
-            div.className = `msg ${{sender}}`;
+            div.className = `msg ${sender}`;
             div.innerHTML = html;
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
             return div;
-        }}
+        }
 
-        async function openHistoryModal() {{
+        async function openHistoryModal() {
             document.getElementById('historyModal').style.display = 'flex';
             const modalBody = document.getElementById('modalHistoryBody');
             modalBody.innerHTML = 'Cargando registros...';
-            try {{
+            try {
                 const res = await fetch('/history');
                 const data = await res.json();
                 modalBody.innerHTML = '';
-                if (!data.history || data.history.length === 0) {{
+                if (!data.history || data.history.length === 0) {
                     modalBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados todavía.</em>';
                     return;
-                }}
-                data.history.forEach(item => {{
+                }
+                data.history.forEach(item => {
                     const div = document.createElement('div');
-                    div.className = `history-item ${{item.role === 'user' ? 'user-item' : ''}}`;
+                    div.className = `history-item ${item.role === 'user' ? 'user-item' : ''}`;
                     div.innerHTML = `
-                        <div class="history-role">${{item.role.toUpperCase()}}</div>
-                        <div>${{item.content.replace(/<br>/g, '\\n')}}</div>
+                        <div class="history-role">${item.role.toUpperCase()}</div>
+                        <div>${item.content.replace(/<br>/g, '\\n')}</div>
                     `;
                     modalBody.appendChild(div);
-                }});
-            }} catch(e) {{
+                });
+            } catch(e) {
                 modalBody.innerHTML = 'Error al cargar el historial.';
-            }}
-        }}
+            }
+        }
 
-        function closeHistoryModal() {{
+        function closeHistoryModal() {
             document.getElementById('historyModal').style.display = 'none';
-        }}
+        }
 
-        function showFileName() {{
-            if (fileInput.files.length > 0) {{
+        function showFileName() {
+            if (fileInput.files.length > 0) {
                 fileNameDisplay.textContent = '📎 ' + fileInput.files[0].name;
                 fileNameDisplay.style.display = 'block';
-            }} else {{
+            } else {
                 fileNameDisplay.style.display = 'none';
-            }}
-        }}
+            }
+        }
 
-        async function clearMemory() {{
-            if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {{
-                await fetch('/clear', {{ method: 'POST' }});
+        async function clearMemory() {
+            if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {
+                await fetch('/clear', { method: 'POST' });
                 location.reload();
-            }}
-        }}
+            }
+        }
     </script>
 </body>
 </html>
 """
-    return html_content
+    return html_template.replace("__CHAT_CONTENT__", chat_html)
 
 @app.get("/history")
 def get_history():
