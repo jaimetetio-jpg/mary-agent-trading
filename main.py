@@ -6,9 +6,9 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.2")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.4")
 
-DB_FILE = "mary_memory.db"
+DB_FILE = "mary_memory_v4.db"
 
 def init_db():
     try:
@@ -23,18 +23,11 @@ def init_db():
         ''')
         conn.commit()
         
-        # Verificar si hay registros; si está vacío, o si el primer mensaje no es el saludo actual, actualizarlo
-        cursor.execute("SELECT id, content FROM history ORDER BY id ASC LIMIT 1")
-        row = cursor.fetchone()
-        
-        target_greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
-        
-        if not row:
-            cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", target_greeting))
-            conn.commit()
-        else:
-            # Forzar actualización del saludo principal si cambió la versión
-            cursor.execute("UPDATE history SET content = ? WHERE id = ?", (target_greeting, row[0]))
+        cursor.execute("SELECT COUNT(*) FROM history")
+        count = cursor.fetchone()[0]
+        if count == 0:
+            greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
+            cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", greeting))
             conn.commit()
             
         conn.close()
@@ -69,9 +62,8 @@ def clear_db_history():
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
         cursor.execute("DELETE FROM history")
-        # Volver a insertar el saludo obligatorio al limpiar
-        target_greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
-        cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", target_greeting))
+        greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
+        cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", greeting))
         conn.commit()
         conn.close()
     except Exception as e:
@@ -85,7 +77,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.2</title>
+        <title>Mary - Neural Engine Pro v6.4</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -320,7 +312,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.2</h1>
+            <h1>⚡ Mary Pro v6.4</h1>
             <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
         </header>
 
@@ -333,7 +325,7 @@ def home():
                     📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
                 </label>
                 <input type="text" id="userInput" placeholder="Escribe tu instrucción o pregunta..." autofocus>
-                <button class="send-btn" id="sendButton">Enviar</button>
+                <button type="button" class="send-btn" id="sendButton" onclick="send()">Enviar</button>
             </div>
         </div>
 
@@ -344,7 +336,7 @@ def home():
                     <button class="close-modal" onclick="closeHistoryModal()">&times;</button>
                 </div>
                 <div class="modal-body" id="modalHistoryBody">
-                    Cargando historial...
+                    Cargando registros...
                 </div>
                 <div class="modal-footer">
                     <button class="btn-danger" onclick="clearMemory()">Borrar Historial</button>
@@ -360,18 +352,12 @@ def home():
             const fileNameDisplay = document.getElementById('fileNameDisplay');
             const historyModal = document.getElementById('historyModal');
             const modalHistoryBody = document.getElementById('modalHistoryBody');
-            const sendButton = document.getElementById('sendButton');
 
             input.addEventListener('keypress', (e) => { 
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     send();
                 }
-            });
-
-            sendButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                send();
             });
 
             async function loadHistory() {
