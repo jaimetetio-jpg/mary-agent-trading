@@ -6,9 +6,9 @@ import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.15")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.17")
 
-DB_FILE = "mary_memory_v15.db"
+DB_FILE = "mary_memory_v17.db"
 
 def init_db():
     try:
@@ -57,18 +57,6 @@ def save_to_db(role: str, content: str):
     except Exception as e:
         print(f"Error guardando en BD: {e}")
 
-def clear_db_history():
-    try:
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM history")
-        greeting = "¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?"
-        cursor.execute("INSERT INTO history (role, content) VALUES (?, ?)", ("assistant", greeting))
-        conn.commit()
-        conn.close()
-    except Exception as e:
-        print(f"Error limpiando BD: {e}")
-
 @app.get("/", response_class=HTMLResponse)
 def home():
     history = get_db_history()
@@ -83,7 +71,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.15</title>
+    <title>Mary - Neural Engine Pro v6.17</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -137,7 +125,6 @@ def home():
             background: rgba(16, 185, 129, 0.4);
         }
         
-        /* Vistas de la aplicación */
         .view-container {
             flex: 1;
             display: none;
@@ -152,7 +139,6 @@ def home():
             display: flex;
         }
 
-        /* Vista Inicio / General */
         #homeView {
             justify-content: center;
             align-items: center;
@@ -195,7 +181,6 @@ def home():
             font-size: 0.95rem;
         }
 
-        /* Vista Chat */
         #chat {
             flex: 1;
             overflow-y: auto;
@@ -290,7 +275,6 @@ def home():
             display: none;
         }
 
-        /* Modal Historial */
         #historyModal {
             display: none;
             position: fixed;
@@ -370,44 +354,33 @@ def home():
             padding: 10px 16px;
             background: #0f172a;
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-end;
             border-top: 1px solid #334155;
-        }
-        .btn-danger {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.8rem;
         }
     </style>
 </head>
 <body>
     <header>
-        <h1 onclick="switchView('home')">⚡ Mary Pro v6.15</h1>
+        <h1 onclick="switchView('home')">⚡ Mary Pro v6.17</h1>
         <div class="header-actions">
             <button class="btn-nav" type="button" onclick="switchView('home')">🏠 Inicio</button>
-            <button class="btn-nav" type="button" onclick="startNewChat()">➕ Nuevo Chat</button>
+            <button class="btn-nav" type="button" onclick="startNewChatSession()">➕ Nuevo Chat</button>
             <button class="btn-nav" type="button" onclick="openHistoryModal()">📜 Historial</button>
         </div>
     </header>
 
-    <!-- VISTA INICIO / GENERAL -->
     <div id="homeView" class="view-container active">
         <div class="home-card">
             <h2>Panel de Control</h2>
             <p>Bienvenida general de Mary, tu mentora de negocio e IA autónoma.</p>
             <div class="home-btn-group">
                 <button class="btn-primary-action" type="button" onclick="switchView('chat')">💬 Ir al Chat Actual</button>
-                <button class="btn-nav" type="button" onclick="startNewChat()" style="padding: 12px;">➕ Iniciar Nuevo Chat</button>
+                <button class="btn-nav" type="button" onclick="startNewChatSession()" style="padding: 12px;">➕ Iniciar Nuevo Chat</button>
                 <button class="btn-nav" type="button" onclick="openHistoryModal()" style="padding: 12px;">📜 Ver Historial de Conversación</button>
             </div>
         </div>
     </div>
 
-    <!-- VISTA CHAT ACTIVO -->
     <div id="chatView" class="view-container">
         <div id="chat">
             __CHAT_CONTENT__
@@ -424,18 +397,16 @@ def home():
         </div>
     </div>
 
-    <!-- MODAL HISTORIAL -->
     <div id="historyModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📜 Historial (Toca para cargar)</h3>
+                <h3>📜 Historial Permanente (Base de Datos)</h3>
                 <button class="close-modal" type="button" onclick="closeHistoryModal()">&times;</button>
             </div>
             <div class="modal-body" id="modalHistoryBody">
                 Cargando registros...
             </div>
             <div class="modal-footer">
-                <button class="btn-danger" type="button" onclick="clearMemory()">Borrar Todo</button>
                 <button class="btn-nav" type="button" onclick="closeHistoryModal()">Cerrar</button>
             </div>
         </div>
@@ -455,11 +426,11 @@ def home():
             }
         }
 
-        async function startNewChat() {
-            if (confirm('¿Deseas iniciar un nuevo chat limpiando la sesión actual?')) {
-                await fetch('/clear', { method: 'POST' });
-                location.reload();
-            }
+        function startNewChatSession() {
+            document.getElementById('chat').innerHTML = `
+                <div class="msg mary">¡Hola, Jaime! Nuevo chat iniciado. ¿En qué puedo ayudarte hoy?</div>
+            `;
+            switchView('chat');
         }
 
         const chat = document.getElementById('chat');
@@ -560,13 +531,17 @@ def home():
                     div.innerHTML = `
                         <div class="history-role">${item.role.toUpperCase()}</div>
                         <div>${item.content}</div>
-                        <div class="history-hint">👆 Toca para cargar en el chat</div>
+                        <div class="history-hint">👆 Toca para continuar el tema con Mary</div>
                     `;
                     
-                    div.onclick = () => {
-                        input.value = cleanContent.replace(/<[^>]*>?/gm, '');
+                    // Al tocar un elemento del historial, se coloca en el input Y se envía automáticamente
+                    // para seguir interactuando con Mary sobre ese punto de la base de datos.
+                    div.onclick = async () => {
+                        const textToResume = cleanContent.replace(/<[^>]*>?/gm, '');
                         closeHistoryModal();
                         switchView('chat');
+                        
+                        input.value = `Continuando sobre esto: "${textToResume}" -> `;
                         input.focus();
                     };
                     
@@ -589,13 +564,6 @@ def home():
                 fileNameDisplay.style.display = 'none';
             }
         }
-
-        async function clearMemory() {
-            if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {
-                await fetch('/clear', { method: 'POST' });
-                location.reload();
-            }
-        }
     </script>
 </body>
 </html>
@@ -605,11 +573,6 @@ def home():
 @app.get("/history")
 def get_history():
     return {"history": get_db_history()}
-
-@app.post("/clear")
-def clear_history():
-    clear_db_history()
-    return {"status": "success"}
 
 @app.post("/build")
 async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
@@ -646,7 +609,7 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     
     system_instruction = (
         "Eres Mary, la mentora de negocio de Jaime. Te diriges a él siempre por su nombre (Jaime) con un tono profesional, estratégico y enfocado en el éxito de sus proyectos y operaciones. "
-        "Posees memoria completa de todas las iteraciones previas. Analiza con precisión cualquier imagen o archivo que te adjunten."
+        "Posees memoria completa de todas las iteraciones previas guardadas en la base de datos. Analiza con precisión cualquier contexto pasado, imagen o archivo."
     )
     
     messages = [{"role": "system", "content": system_instruction}]
