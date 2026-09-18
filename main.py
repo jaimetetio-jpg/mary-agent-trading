@@ -6,9 +6,9 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.5")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.6")
 
-DB_FILE = "mary_memory_v5.db"
+DB_FILE = "mary_memory_v6.db"
 
 def init_db():
     try:
@@ -77,7 +77,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.5</title>
+        <title>Mary - Neural Engine Pro v6.6</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -165,8 +165,8 @@ def home():
                 white-space: pre-wrap;
             }
             .input-container {
-                background: rgba(15, 23, 42, 0.9);
-                padding: 15px 20px;
+                background: rgba(15, 23, 42, 0.95);
+                padding: 12px 15px;
                 display: flex;
                 flex-direction: column;
                 gap: 8px;
@@ -178,14 +178,16 @@ def home():
             }
             .input-row {
                 display: flex;
-                gap: 10px;
+                gap: 8px;
+                align-items: center;
             }
             input[type="text"] {
                 flex: 1;
+                min-width: 0;
                 background: #0b0f19;
                 border: 1px solid #334155;
                 border-radius: 12px;
-                padding: 12px 16px;
+                padding: 12px 14px;
                 color: white;
                 font-size: 1rem;
                 outline: none;
@@ -197,13 +199,15 @@ def home():
             .file-upload-btn {
                 background: #334155;
                 color: white;
-                padding: 0 14px;
+                padding: 0 12px;
+                height: 46px;
                 border-radius: 12px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
                 font-size: 1.2rem;
+                flex-shrink: 0;
                 transition: background 0.2s;
             }
             .file-upload-btn:hover {
@@ -216,10 +220,16 @@ def home():
                 background: linear-gradient(135deg, #10b981, #059669);
                 color: white;
                 border: none;
-                padding: 0 20px;
+                padding: 0 16px;
+                height: 46px;
                 font-weight: bold;
                 border-radius: 12px;
                 cursor: pointer;
+                flex-shrink: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 0.95rem;
             }
             #fileNameDisplay {
                 font-size: 0.8rem;
@@ -312,12 +322,11 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.5</h1>
+            <h1>⚡ Mary Pro v6.6</h1>
             <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
         </header>
 
         <div id="chat">
-            <!-- Saludo estático garantizado por si falla la red o el fetch -->
             <div class="msg mary">¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?</div>
         </div>
 
@@ -327,8 +336,8 @@ def home():
                 <label class="file-upload-btn" title="Adjuntar foto o archivo">
                     📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
                 </label>
-                <input type="text" id="userInput" placeholder="Escribe tu instrucción o pregunta..." autofocus>
-                <button type="button" class="send-btn" id="sendButton" onclick="send()">Enviar</button>
+                <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autofocus>
+                <button type="button" class="send-btn" id="sendButton" onclick="send()">Enviar ➔</button>
             </div>
         </div>
 
@@ -478,7 +487,6 @@ def home():
                 return id;
             }
 
-            // Sincronizar en segundo plano sin bloquear la UI
             loadHistory();
         </script>
     </body>
