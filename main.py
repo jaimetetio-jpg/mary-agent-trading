@@ -1,14 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 import requests
 import os
 import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.11")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.12")
 
-DB_FILE = "mary_memory_v11.db"
+DB_FILE = "mary_memory_v12.db"
 
 def init_db():
     try:
@@ -78,12 +78,12 @@ def home():
         content_formatted = msg["content"].replace("\n", "<br>")
         chat_html += f'<div class="msg {role_class}">{content_formatted}</div>'
 
-    return f"""<!DOCTYPE html>
+    html_content = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.11</title>
+    <title>Mary - Neural Engine Pro v6.12</title>
     <style>
         :root {{
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -319,7 +319,7 @@ def home():
 </head>
 <body>
     <header>
-        <h1>⚡ Mary Pro v6.11</h1>
+        <h1>⚡ Mary Pro v6.12</h1>
         <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
     </header>
 
@@ -410,7 +410,6 @@ def home():
                     const chunk = decoder.decode(value, {{ stream: true }});
                     rawText += chunk;
                     
-                    // Formateo visual fluido en tiempo real
                     let formatted = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     formatted = formatted.replace(/\\n/g, '<br>');
                     maryDiv.innerHTML = formatted;
@@ -483,6 +482,7 @@ def home():
 </body>
 </html>
 """
+    return html_content
 
 @app.get("/history")
 def get_history():
