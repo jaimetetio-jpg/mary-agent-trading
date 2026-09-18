@@ -1,14 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 import requests
 import os
 import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.8")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.9")
 
-DB_FILE = "mary_memory_v8.db"
+DB_FILE = "mary_memory_v9.db"
 
 def init_db():
     try:
@@ -71,20 +71,27 @@ def clear_db_history():
 
 @app.get("/", response_class=HTMLResponse)
 def home():
-    return """
+    history = get_db_history()
+    chat_html = ""
+    for msg in history:
+        role_class = "user" if msg["role"] == "user" else "mary"
+        content_formatted = msg["content"].replace("\n", "<br>")
+        chat_html += f'<div class="msg {role_class}">{content_formatted}</div>'
+
+    return f"""
     <!DOCTYPE html>
     <html lang="es">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.8</title>
+        <title>Mary - Neural Engine Pro v6.9</title>
         <style>
-            :root {
+            :root {{
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
                 --accent-neon: #10b981;
                 --text-main: #f8fafc;
-            }
-            body {
+            }}
+            body {{
                 background: var(--bg-gradient);
                 color: var(--text-main);
                 font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
@@ -94,8 +101,8 @@ def home():
                 flex-direction: column;
                 height: 100dvh;
                 overflow: hidden;
-            }
-            header {
+            }}
+            header {{
                 background: linear-gradient(90deg, #1e293b, #0f172a);
                 padding: 10px 15px;
                 display: flex;
@@ -105,15 +112,15 @@ def home():
                 box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
                 flex-shrink: 0;
                 z-index: 10;
-            }
-            h1 {
+            }}
+            h1 {{
                 margin: 0;
                 font-size: 1.1rem;
                 background: linear-gradient(to right, #34d399, #60a5fa);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
             }
-            .btn-history {
+            .btn-history {{
                 background: rgba(16, 185, 129, 0.2);
                 color: #34d399;
                 border: 1px solid rgba(16, 185, 129, 0.4);
@@ -121,8 +128,8 @@ def home():
                 border-radius: 8px;
                 font-size: 0.8rem;
                 cursor: pointer;
-            }
-            #chat {
+            }}
+            #chat {{
                 flex: 1;
                 overflow-y: auto;
                 padding: 15px;
@@ -133,26 +140,26 @@ def home():
                 width: 100%;
                 margin: 0 auto;
                 box-sizing: border-box;
-            }
-            .msg {
+            }}
+            .msg {{
                 padding: 12px 16px;
                 border-radius: 14px;
                 max-width: 88%;
                 word-break: break-word;
                 line-height: 1.4;
                 font-size: 0.95rem;
-            }
-            .mary {
+            }}
+            .mary {{
                 background: linear-gradient(145deg, #1e293b, #0f172a);
                 border: 1px solid rgba(16, 185, 129, 0.3);
                 align-self: flex-start;
-            }
-            .user {
+            }}
+            .user {{
                 background: linear-gradient(135deg, #059669, #047857);
                 color: white;
                 align-self: flex-end;
-            }
-            pre {
+            }}
+            pre {{
                 background: #05070c;
                 padding: 10px;
                 border-radius: 8px;
@@ -161,8 +168,8 @@ def home():
                 font-family: monospace;
                 border: 1px solid rgba(52, 211, 153, 0.2);
                 white-space: pre-wrap;
-            }
-            .input-container {
+            }}
+            form.input-container {{
                 background: rgba(15, 23, 42, 0.98);
                 padding: 10px 15px;
                 display: flex;
@@ -174,13 +181,13 @@ def home():
                 box-sizing: border-box;
                 border-top: 2px solid rgba(16, 185, 129, 0.3);
                 flex-shrink: 0;
-            }
-            .input-row {
+            }}
+            .input-row {{
                 display: flex;
                 gap: 8px;
                 align-items: center;
             }
-            input[type="text"] {
+            input[type="text"] {{
                 flex: 1;
                 min-width: 0;
                 background: #0b0f19;
@@ -190,12 +197,12 @@ def home():
                 color: white;
                 font-size: 1rem;
                 outline: none;
-            }
-            input[type="text"]:focus {
+            }}
+            input[type="text"]:focus {{
                 border-color: #10b981;
                 box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
-            }
-            .file-upload-btn {
+            }}
+            .file-upload-btn {{
                 background: #334155;
                 color: white;
                 padding: 0 10px;
@@ -208,10 +215,10 @@ def home():
                 font-size: 1.1rem;
                 flex-shrink: 0;
             }
-            input[type="file"] {
+            input[type="file"] {{
                 display: none;
-            }
-            button.send-btn {
+            }}
+            button.send-btn {{
                 background: linear-gradient(135deg, #10b981, #059669);
                 color: white;
                 border: none;
@@ -223,13 +230,13 @@ def home():
                 flex-shrink: 0;
                 font-size: 0.9rem;
             }
-            #fileNameDisplay {
+            #fileNameDisplay {{
                 font-size: 0.75rem;
                 color: #34d399;
                 padding-left: 2px;
                 display: none;
-            }
-            #historyModal {
+            }}
+            #historyModal {{
                 display: none;
                 position: fixed;
                 top: 0; left: 0; width: 100%; height: 100%;
@@ -237,8 +244,8 @@ def home():
                 z-index: 100;
                 justify-content: center;
                 align-items: center;
-            }
-            .modal-content {
+            }}
+            .modal-content {{
                 background: #1e293b;
                 border: 1px solid #10b981;
                 border-radius: 14px;
@@ -248,28 +255,28 @@ def home():
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-            }
-            .modal-header {
+            }}
+            .modal-header {{
                 padding: 12px 16px;
                 background: #0f172a;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 border-bottom: 1px solid #334155;
-            }
-            .modal-header h3 {
+            }}
+            .modal-header h3 {{
                 margin: 0;
                 color: #34d399;
                 font-size: 1rem;
-            }
-            .close-modal {
+            }}
+            .close-modal {{
                 background: transparent;
                 border: none;
                 color: #94a3b8;
                 font-size: 1.4rem;
                 cursor: pointer;
-            }
-            .modal-body {
+            }}
+            .modal-body {{
                 padding: 15px;
                 overflow-y: auto;
                 flex: 1;
@@ -278,29 +285,29 @@ def home():
                 flex-direction: column;
                 gap: 10px;
             }
-            .history-item {
+            .history-item {{
                 padding: 8px 12px;
                 border-radius: 6px;
                 background: #0f172a;
                 border-left: 3px solid #10b981;
-            }
-            .history-item.user-item {
+            }}
+            .history-item.user-item {{
                 border-left-color: #3b82f6;
-            }
-            .history-role {
+            }}
+            .history-role {{
                 font-weight: bold;
                 font-size: 0.7rem;
                 color: #94a3b8;
                 margin-bottom: 3px;
-            }
-            .modal-footer {
+            }}
+            .modal-footer {{
                 padding: 10px 16px;
                 background: #0f172a;
                 display: flex;
                 justify-content: space-between;
                 border-top: 1px solid #334155;
-            }
-            .btn-danger {
+            }}
+            .btn-danger {{
                 background: #ef4444;
                 color: white;
                 border: none;
@@ -313,24 +320,25 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.8</h1>
+            <h1>⚡ Mary Pro v6.9</h1>
             <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
         </header>
 
         <div id="chat">
-            <div class="msg mary">¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?</div>
+            {chat_html}
         </div>
 
-        <div class="input-container">
+        <!-- Formulario nativo directo a Python sin bloqueos JS -->
+        <form class="input-container" action="/build" method="POST" enctype="multipart/form-data" onsubmit="showLoading()">
             <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
             <div class="input-row">
                 <label class="file-upload-btn" title="Adjuntar">
-                    📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
+                    📁 <input type="file" name="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
                 </label>
-                <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off">
-                <button type="button" class="send-btn" id="sendButton" onclick="sendMsg()">Enviar</button>
+                <input type="text" name="instruction" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off" autofocus required>
+                <button type="submit" class="send-btn" id="sendButton">Enviar</button>
             </div>
-        </div>
+        </form>
 
         <div id="historyModal">
             <div class="modal-content">
@@ -350,64 +358,46 @@ def home():
 
         <script>
             const chat = document.getElementById('chat');
-            const input = document.getElementById('userInput');
-            const fileInput = document.getElementById('fileInput');
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
-            const historyModal = document.getElementById('historyModal');
-            const modalHistoryBody = document.getElementById('modalHistoryBody');
+            chat.scrollTop = chat.scrollHeight;
 
-            input.addEventListener('keypress', (e) => { 
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    sendMsg();
-                }
-            });
-
-            async function loadHistory() {
-                try {
-                    const res = await fetch('/history');
-                    const data = await res.json();
-                    if (data.history && data.history.length > 0) {
-                        chat.innerHTML = '';
-                        data.history.forEach(msg => {
-                            appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
-                        });
-                    }
-                } catch(e) {
-                    console.error("Error sincronizando historial:", e);
-                }
+            function showLoading() {
+                const btn = document.getElementById('sendButton');
+                btn.textContent = 'Procesando...';
+                btn.disabled = true;
             }
 
             async function openHistoryModal() {
                 historyModal.style.display = 'flex';
                 modalHistoryBody.innerHTML = 'Cargando registros...';
-                try {
+                try {{
                     const res = await fetch('/history');
                     const data = await res.json();
                     modalHistoryBody.innerHTML = '';
-                    if (!data.history || data.history.length === 0) {
+                    if (!data.history || data.history.length === 0) {{
                         modalHistoryBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados todavía.</em>';
                         return;
-                    }
-                    data.history.forEach(item => {
+                    }}
+                    data.history.forEach(item => {{
                         const div = document.createElement('div');
-                        div.className = `history-item ${item.role === 'user' ? 'user-item' : ''}`;
+                        div.className = `history-item ${{item.role === 'user' ? 'user-item' : ''}}`;
                         div.innerHTML = `
-                            <div class="history-role">${item.role.toUpperCase()}</div>
-                            <div>${item.content.replace(/<br>/g, '\n')}</div>
+                            <div class="history-role">${{item.role.toUpperCase()}}</div>
+                            <div>${{item.content.replace(/<br>/g, '\\n')}}</div>
                         `;
                         modalHistoryBody.appendChild(div);
-                    });
-                } catch(e) {
+                    }});
+                }} catch(e) {{
                     modalHistoryBody.innerHTML = 'Error al cargar el historial.';
-                }
+                }}
             }
 
-            function closeHistoryModal() {
-                historyModal.style.display = 'none';
-            }
+            function closeHistoryModal() {{
+                document.getElementById('historyModal').style.display = 'none';
+            }}
 
             function showFileName() {
+                const fileInput = document.getElementById('fileInput');
+                const fileNameDisplay = document.getElementById('fileNameDisplay');
                 if (fileInput.files.length > 0) {
                     fileNameDisplay.textContent = '📎 ' + fileInput.files[0].name;
                     fileNameDisplay.style.display = 'block';
@@ -416,69 +406,12 @@ def home():
                 }
             }
 
-            async function sendMsg() {
-                const text = input.value.trim();
-                const file = fileInput.files[0];
-                if (!text && !file) return;
-
-                let displayText = text;
-                if (file) displayText += `<br><em>[Archivo adjunto: ${file.name}]</em>`;
-                
-                appendMsg(displayText, 'user', true);
-                
-                input.value = '';
-                const loadId = appendMsg('Mary procesando...', 'mary');
-
-                const formData = new FormData();
-                formData.append('instruction', text || "Analiza este archivo adjunto.");
-                if (file) {
-                    formData.append('file', file);
-                }
-
-                try {
-                    const res = await fetch('/build', {
-                        method: 'POST',
-                        body: formData
-                    });
-                    const data = await res.json();
-                    
-                    const loadElement = document.getElementById(loadId);
-                    if (loadElement) loadElement.remove();
-                    
-                    const replyText = data.respuesta_ia || "Error de respuesta.";
-                    appendMsg(replyText, 'mary', true);
-                    
-                    fileInput.value = '';
-                    fileNameDisplay.style.display = 'none';
-
-                } catch (err) {
-                    const loadElement = document.getElementById(loadId);
-                    if (loadElement) loadElement.remove();
-                    appendMsg('Error de comunicación con el núcleo.', 'mary');
-                }
-            }
-
             async function clearMemory() {
-                if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {
-                    await fetch('/clear', { method: 'POST' });
-                    closeHistoryModal();
-                    loadHistory();
-                }
+                if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {{
+                    await fetch('/clear', {{ method: 'POST' }});
+                    location.reload();
+                }}
             }
-
-            function appendMsg(html, sender, isHtml = false) {
-                const div = document.createElement('div');
-                div.className = `msg ${sender}`;
-                const id = 'msg-' + Math.random().toString(36).substring(2, 9);
-                div.id = id;
-                if (isHtml) div.innerHTML = html;
-                else div.textContent = html;
-                chat.appendChild(div);
-                chat.scrollTop = chat.scrollHeight;
-                return id;
-            }
-
-            loadHistory();
         </script>
     </body>
     </html>
@@ -497,14 +430,16 @@ def clear_history():
 async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
-        return {"agente": "Mary", "respuesta_ia": "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."}
+        save_to_db("user", instruction)
+        save_to_db("assistant", "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render.")
+        return RedirectResponse(url="/", status_code=303)
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
     file_content_text = ""
     image_payload = None
 
-    if file:
+    if file and file.filename:
         contents = await file.read()
         mime = file.content_type or ""
         if "image" in mime:
@@ -528,20 +463,22 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     
     messages = [{"role": "system", "content": system_instruction}]
     
-    for h in db_history:
+    for h in db_history[:-1]:
         role = "user" if h["role"] == "user" else "assistant"
-        content = h["content"]
+        messages.append({"role": role, "content": h["content"]})
         
-        if h == db_history[-1] and image_payload and role == "user":
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": content},
-                    {"type": "image_url", "image_url": {"url": image_payload}}
-                ]
-            })
-        else:
-            messages.append({"role": role, "content": content})
+    # Último mensaje
+    last_content = db_history[-1]["content"]
+    if image_payload:
+        messages.append({
+            "role": "user",
+            "content": [
+                {"type": "text", "text": last_content},
+                {"type": "image_url", "image_url": {"url": image_payload}}
+            ]
+        })
+    else:
+        messages.append({"role": "user", "content": last_content})
 
     model_to_use = "deepseek/deepseek-chat"
     if image_payload:
@@ -560,29 +497,27 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         "Content-Type": "application/json"
     }
 
+    ai_text = "⚠️ Error de respuesta."
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=45)
         res_data = response.json()
         
         if "error" in res_data:
             error_msg = res_data["error"].get("message", "Error desconocido en OpenRouter")
-            return {"agente": "Mary", "respuesta_ia": f"⚠️ Nota de sistema: {error_msg}"}
-        
-        if "choices" in res_data and len(res_data["choices"]) > 0:
+            ai_text = f"⚠️ Nota de sistema: {error_msg}"
+        elif "choices" in res_data and len(res_data["choices"]) > 0:
             ai_text = res_data["choices"][0]["message"]["content"]
         else:
             ai_text = f"Respuesta inesperada: {str(res_data)}"
-            
-        save_to_db("assistant", ai_text)
-
-        ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        ai_reply = ai_reply.replace("\n", "<br>")
-        ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
-        ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
-
-        return {
-            "agente": "Mary",
-            "respuesta_ia": ai_reply
-        }
     except Exception as e:
-        return {"agente": "Mary", "respuesta_ia": f"⚠️ Error de conexión: {str(e)}"}
+        ai_text = f"⚠️ Error de conexión: {str(e)}"
+            
+    # Formatear la respuesta para HTML
+    ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    ai_reply = ai_reply.replace("\n", "<br>")
+    ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
+    ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
+
+    save_to_db("assistant", ai_reply)
+
+    return RedirectResponse(url="/", status_code=303)
