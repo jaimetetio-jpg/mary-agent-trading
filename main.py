@@ -6,9 +6,9 @@ import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.13")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.14")
 
-DB_FILE = "mary_memory_v13.db"
+DB_FILE = "mary_memory_v14.db"
 
 def init_db():
     try:
@@ -83,7 +83,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.13</title>
+    <title>Mary - Neural Engine Pro v6.14</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -285,10 +285,15 @@ def home():
             gap: 10px;
         }
         .history-item {
-            padding: 8px 12px;
-            border-radius: 6px;
+            padding: 10px 12px;
+            border-radius: 8px;
             background: #0f172a;
             border-left: 3px solid #10b981;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .history-item:hover {
+            background: #162032;
         }
         .history-item.user-item {
             border-left-color: #3b82f6;
@@ -298,6 +303,12 @@ def home():
             font-size: 0.7rem;
             color: #94a3b8;
             margin-bottom: 3px;
+        }
+        .history-hint {
+            font-size: 0.7rem;
+            color: #34d399;
+            margin-top: 5px;
+            text-align: right;
         }
         .modal-footer {
             padding: 10px 16px;
@@ -319,7 +330,7 @@ def home():
 </head>
 <body>
     <header>
-        <h1>⚡ Mary Pro v6.13</h1>
+        <h1>⚡ Mary Pro v6.14</h1>
         <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
     </header>
 
@@ -341,7 +352,7 @@ def home():
     <div id="historyModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📜 Historial en Base de Datos</h3>
+                <h3>📜 Historial (Toca para restaurar)</h3>
                 <button class="close-modal" type="button" onclick="closeHistoryModal()">&times;</button>
             </div>
             <div class="modal-body" id="modalHistoryBody">
@@ -448,10 +459,20 @@ def home():
                 data.history.forEach(item => {
                     const div = document.createElement('div');
                     div.className = `history-item ${item.role === 'user' ? 'user-item' : ''}`;
+                    
+                    const cleanContent = item.content.replace(/<br>/g, '\\n');
                     div.innerHTML = `
                         <div class="history-role">${item.role.toUpperCase()}</div>
-                        <div>${item.content.replace(/<br>/g, '\\n')}</div>
+                        <div>${item.content}</div>
+                        <div class="history-hint">👆 Toca para cargar en el cuadro de texto</div>
                     `;
+                    
+                    div.onclick = () => {
+                        input.value = cleanContent.replace(/<[^>]*>?/gm, ''); // Limpia tags HTML básicos al restaurar
+                        closeHistoryModal();
+                        input.focus();
+                    };
+                    
                     modalBody.appendChild(div);
                 });
             } catch(e) {
