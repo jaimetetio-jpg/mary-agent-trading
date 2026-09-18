@@ -6,9 +6,9 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.6")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.7")
 
-DB_FILE = "mary_memory_v6.db"
+DB_FILE = "mary_memory_v7.db"
 
 def init_db():
     try:
@@ -77,7 +77,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.6</title>
+        <title>Mary - Neural Engine Pro v6.7</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -92,22 +92,23 @@ def home():
                 padding: 0;
                 display: flex;
                 flex-direction: column;
-                height: 100vh;
+                height: 100dvh; /* Altura dinámica real para móviles */
                 overflow: hidden;
             }
             header {
                 background: linear-gradient(90deg, #1e293b, #0f172a);
-                padding: 12px 20px;
+                padding: 10px 15px;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
                 border-bottom: 2px solid rgba(16, 185, 129, 0.3);
-                box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+                flex-shrink: 0;
                 z-index: 10;
             }
             h1 {
                 margin: 0;
-                font-size: 1.2rem;
+                font-size: 1.1rem;
                 background: linear-gradient(to right, #34d399, #60a5fa);
                 -webkit-background-clip: text;
                 -webkit-text-fill-color: transparent;
@@ -116,33 +117,30 @@ def home():
                 background: rgba(16, 185, 129, 0.2);
                 color: #34d399;
                 border: 1px solid rgba(16, 185, 129, 0.4);
-                padding: 6px 12px;
+                padding: 5px 10px;
                 border-radius: 8px;
-                font-size: 0.85rem;
+                font-size: 0.8rem;
                 cursor: pointer;
-                transition: background 0.2s;
-            }
-            .btn-history:hover {
-                background: rgba(16, 185, 129, 0.4);
             }
             #chat {
                 flex: 1;
                 overflow-y: auto;
-                padding: 20px;
+                padding: 15px;
                 display: flex;
                 flex-direction: column;
-                gap: 15px;
+                gap: 12px;
                 max-width: 750px;
                 width: 100%;
                 margin: 0 auto;
                 box-sizing: border-box;
             }
             .msg {
-                padding: 14px 18px;
-                border-radius: 16px;
-                max-width: 85%;
+                padding: 12px 16px;
+                border-radius: 14px;
+                max-width: 88%;
                 word-break: break-word;
-                line-height: 1.5;
+                line-height: 1.4;
+                font-size: 0.95rem;
             }
             .mary {
                 background: linear-gradient(145deg, #1e293b, #0f172a);
@@ -156,25 +154,27 @@ def home():
             }
             pre {
                 background: #05070c;
-                padding: 12px;
+                padding: 10px;
                 border-radius: 8px;
                 color: #34d399;
                 overflow-x: auto;
-                font-family: 'Courier New', Courier, monospace;
+                font-family: monospace;
                 border: 1px solid rgba(52, 211, 153, 0.2);
                 white-space: pre-wrap;
             }
-            .input-container {
-                background: rgba(15, 23, 42, 0.95);
-                padding: 12px 15px;
+            /* Formulario contenedor para asegurar interactividad total en móviles */
+            form.input-container {
+                background: rgba(15, 23, 42, 0.98);
+                padding: 10px 15px;
                 display: flex;
                 flex-direction: column;
-                gap: 8px;
+                gap: 6px;
                 max-width: 750px;
                 width: 100%;
                 margin: 0 auto;
                 box-sizing: border-box;
-                border-top: 2px solid rgba(16, 185, 129, 0.2);
+                border-top: 2px solid rgba(16, 185, 129, 0.3);
+                flex-shrink: 0;
             }
             .input-row {
                 display: flex;
@@ -186,32 +186,28 @@ def home():
                 min-width: 0;
                 background: #0b0f19;
                 border: 1px solid #334155;
-                border-radius: 12px;
-                padding: 12px 14px;
+                border-radius: 10px;
+                padding: 10px 12px;
                 color: white;
                 font-size: 1rem;
                 outline: none;
             }
             input[type="text"]:focus {
                 border-color: #10b981;
-                box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+                box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
             }
             .file-upload-btn {
                 background: #334155;
                 color: white;
-                padding: 0 12px;
-                height: 46px;
-                border-radius: 12px;
+                padding: 0 10px;
+                height: 42px;
+                border-radius: 10px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 cursor: pointer;
-                font-size: 1.2rem;
+                font-size: 1.1rem;
                 flex-shrink: 0;
-                transition: background 0.2s;
-            }
-            .file-upload-btn:hover {
-                background: #475569;
             }
             input[type="file"] {
                 display: none;
@@ -220,28 +216,25 @@ def home():
                 background: linear-gradient(135deg, #10b981, #059669);
                 color: white;
                 border: none;
-                padding: 0 16px;
-                height: 46px;
+                padding: 0 14px;
+                height: 42px;
                 font-weight: bold;
-                border-radius: 12px;
+                border-radius: 10px;
                 cursor: pointer;
                 flex-shrink: 0;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 0.95rem;
+                font-size: 0.9rem;
             }
             #fileNameDisplay {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 color: #34d399;
-                padding-left: 5px;
+                padding-left: 2px;
                 display: none;
             }
             #historyModal {
                 display: none;
                 position: fixed;
                 top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.8);
+                background: rgba(0,0,0,0.85);
                 z-index: 100;
                 justify-content: center;
                 align-items: center;
@@ -249,17 +242,16 @@ def home():
             .modal-content {
                 background: #1e293b;
                 border: 1px solid #10b981;
-                border-radius: 16px;
-                width: 90%;
-                max-width: 600px;
+                border-radius: 14px;
+                width: 92%;
+                max-width: 550px;
                 max-height: 80vh;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);
             }
             .modal-header {
-                padding: 15px 20px;
+                padding: 12px 16px;
                 background: #0f172a;
                 display: flex;
                 justify-content: space-between;
@@ -269,27 +261,27 @@ def home():
             .modal-header h3 {
                 margin: 0;
                 color: #34d399;
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
             .close-modal {
                 background: transparent;
                 border: none;
                 color: #94a3b8;
-                font-size: 1.5rem;
+                font-size: 1.4rem;
                 cursor: pointer;
             }
             .modal-body {
-                padding: 20px;
+                padding: 15px;
                 overflow-y: auto;
                 flex: 1;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 display: flex;
                 flex-direction: column;
-                gap: 12px;
+                gap: 10px;
             }
             .history-item {
-                padding: 10px 14px;
-                border-radius: 8px;
+                padding: 8px 12px;
+                border-radius: 6px;
                 background: #0f172a;
                 border-left: 3px solid #10b981;
             }
@@ -298,12 +290,12 @@ def home():
             }
             .history-role {
                 font-weight: bold;
-                font-size: 0.75rem;
+                font-size: 0.7rem;
                 color: #94a3b8;
-                margin-bottom: 4px;
+                margin-bottom: 3px;
             }
             .modal-footer {
-                padding: 12px 20px;
+                padding: 10px 16px;
                 background: #0f172a;
                 display: flex;
                 justify-content: space-between;
@@ -313,46 +305,47 @@ def home():
                 background: #ef4444;
                 color: white;
                 border: none;
-                padding: 6px 12px;
-                border-radius: 8px;
+                padding: 6px 10px;
+                border-radius: 6px;
                 cursor: pointer;
-                font-size: 0.85rem;
+                font-size: 0.8rem;
             }
         </style>
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.6</h1>
-            <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
+            <h1>⚡ Mary Pro v6.7</h1>
+            <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
         </header>
 
         <div id="chat">
             <div class="msg mary">¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?</div>
         </div>
 
-        <div class="input-container">
+        <!-- Usamos un formulario nativo para garantizar el envío en móviles -->
+        <form class="input-container" onsubmit="handleSend(event)">
             <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
             <div class="input-row">
-                <label class="file-upload-btn" title="Adjuntar foto o archivo">
+                <label class="file-upload-btn" title="Adjuntar">
                     📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
                 </label>
-                <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autofocus>
-                <button type="button" class="send-btn" id="sendButton" onclick="send()">Enviar ➔</button>
+                <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off">
+                <button type="submit" class="send-btn" id="sendButton">Enviar</button>
             </div>
-        </div>
+        </form>
 
         <div id="historyModal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h3>📜 Historial de Conversación (SQLite)</h3>
-                    <button class="close-modal" onclick="closeHistoryModal()">&times;</button>
+                    <h3>📜 Historial en Base de Datos</h3>
+                    <button class="close-modal" type="button" onclick="closeHistoryModal()">&times;</button>
                 </div>
                 <div class="modal-body" id="modalHistoryBody">
                     Cargando registros...
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-danger" onclick="clearMemory()">Borrar Historial</button>
-                    <button class="btn-history" onclick="closeHistoryModal()">Cerrar</button>
+                    <button class="btn-danger" type="button" onclick="clearMemory()">Borrar Todo</button>
+                    <button class="btn-history" type="button" onclick="closeHistoryModal()">Cerrar</button>
                 </div>
             </div>
         </div>
@@ -364,13 +357,6 @@ def home():
             const fileNameDisplay = document.getElementById('fileNameDisplay');
             const historyModal = document.getElementById('historyModal');
             const modalHistoryBody = document.getElementById('modalHistoryBody');
-
-            input.addEventListener('keypress', (e) => { 
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    send();
-                }
-            });
 
             async function loadHistory() {
                 try {
@@ -395,7 +381,7 @@ def home():
                     const data = await res.json();
                     modalHistoryBody.innerHTML = '';
                     if (!data.history || data.history.length === 0) {
-                        modalHistoryBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados en la base de datos todavía.</em>';
+                        modalHistoryBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados todavía.</em>';
                         return;
                     }
                     data.history.forEach(item => {
@@ -425,7 +411,8 @@ def home():
                 }
             }
 
-            async function send() {
+            async function handleSend(event) {
+                event.preventDefault();
                 const text = input.value.trim();
                 const file = fileInput.files[0];
                 if (!text && !file) return;
@@ -468,7 +455,7 @@ def home():
             }
 
             async function clearMemory() {
-                if(confirm('¿Deseas reiniciar toda la memoria de conversaciones de la base de datos?')) {
+                if(confirm('¿Deseas reiniciar toda la memoria de conversaciones?')) {
                     await fetch('/clear', { method: 'POST' });
                     closeHistoryModal();
                     loadHistory();
