@@ -6,9 +6,9 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.4")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.5")
 
-DB_FILE = "mary_memory_v4.db"
+DB_FILE = "mary_memory_v5.db"
 
 def init_db():
     try:
@@ -77,7 +77,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.4</title>
+        <title>Mary - Neural Engine Pro v6.5</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -312,11 +312,14 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.4</h1>
+            <h1>⚡ Mary Pro v6.5</h1>
             <button class="btn-history" onclick="openHistoryModal()">📜 Ver Historial</button>
         </header>
 
-        <div id="chat"></div>
+        <div id="chat">
+            <!-- Saludo estático garantizado por si falla la red o el fetch -->
+            <div class="msg mary">¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?</div>
+        </div>
 
         <div class="input-container">
             <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
@@ -364,14 +367,14 @@ def home():
                 try {
                     const res = await fetch('/history');
                     const data = await res.json();
-                    chat.innerHTML = '';
                     if (data.history && data.history.length > 0) {
+                        chat.innerHTML = '';
                         data.history.forEach(msg => {
                             appendMsg(msg.content, msg.role === 'user' ? 'user' : 'mary', true);
                         });
                     }
                 } catch(e) {
-                    appendMsg('Error cargando historial.', 'mary');
+                    console.error("Error sincronizando historial:", e);
                 }
             }
 
@@ -475,6 +478,7 @@ def home():
                 return id;
             }
 
+            // Sincronizar en segundo plano sin bloquear la UI
             loadHistory();
         </script>
     </body>
