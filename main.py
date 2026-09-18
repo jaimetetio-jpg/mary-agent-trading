@@ -1,14 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 import requests
 import os
-import re
+import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.10")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.11")
 
-DB_FILE = "mary_memory_v10.db"
+DB_FILE = "mary_memory_v11.db"
 
 def init_db():
     try:
@@ -83,7 +83,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.10</title>
+    <title>Mary - Neural Engine Pro v6.11</title>
     <style>
         :root {{
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -168,7 +168,7 @@ def home():
             border: 1px solid rgba(52, 211, 153, 0.2);
             white-space: pre-wrap;
         }}
-        form.input-container {{
+        .input-container {{
             background: rgba(15, 23, 42, 0.98);
             padding: 10px 15px;
             display: flex;
@@ -319,7 +319,7 @@ def home():
 </head>
 <body>
     <header>
-        <h1>⚡ Mary Pro v6.10</h1>
+        <h1>⚡ Mary Pro v6.11</h1>
         <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
     </header>
 
@@ -327,16 +327,16 @@ def home():
         {chat_html}
     </div>
 
-    <form class="input-container" action="/build" method="POST" enctype="multipart/form-data" onsubmit="showLoading()">
+    <div class="input-container">
         <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
         <div class="input-row">
             <label class="file-upload-btn" title="Adjuntar">
-                📁 <input type="file" name="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
+                📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
             </label>
-            <input type="text" name="instruction" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off" autofocus required>
-            <button type="submit" class="send-btn" id="sendButton">Enviar</button>
+            <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off" autofocus>
+            <button type="button" class="send-btn" id="sendButton" onclick="sendMsg()">Enviar</button>
         </div>
-    </form>
+    </div>
 
     <div id="historyModal">
         <div class="modal-content">
@@ -358,21 +358,92 @@ def home():
         const chat = document.getElementById('chat');
         chat.scrollTop = chat.scrollHeight;
 
-        function showLoading() {{
-            const btn = document.getElementById('sendButton');
-            btn.textContent = 'Procesando...';
-            btn.disabled = true;
+        const input = document.getElementById('userInput');
+        const fileInput = document.getElementById('fileInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const sendButton = document.getElementById('sendButton');
+
+        input.addEventListener('keypress', (e) => {{
+            if (e.key === 'Enter') {{
+                e.preventDefault();
+                sendMsg();
+            }}
+        }});
+
+        async function sendMsg() {{
+            const text = input.value.trim();
+            const file = fileInput.files[0];
+            if (!text && !file) return;
+
+            sendButton.disabled = true;
+            sendButton.textContent = 'Enviando...';
+
+            let userDisplay = text;
+            if (file) userDisplay += `<br><em>[Archivo adjunto: ${{file.name}}]</em>`;
+            appendMessage(userDisplay, 'user');
+
+            input.value = '';
+            fileInput.value = '';
+            fileNameDisplay.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append('instruction', text || "Analiza este archivo adjunto.");
+            if (file) formData.append('file', file);
+
+            const maryDiv = appendMessage('', 'mary');
+
+            try {{
+                const response = await fetch('/build', {{
+                    method: 'POST',
+                    body: formData
+                }});
+
+                if (!response.ok) throw new Error('Error en el servidor');
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let rawText = '';
+
+                while (true) {{
+                    const {{ value, done }} = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, {{ stream: true }});
+                    rawText += chunk;
+                    
+                    // Formateo visual fluido en tiempo real
+                    let formatted = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    formatted = formatted.replace(/\\n/g, '<br>');
+                    maryDiv.innerHTML = formatted;
+                    chat.scrollTop = chat.scrollHeight;
+                }}
+            } catch (err) {{
+                maryDiv.innerHTML = '⚠️ Error de conexión en tiempo real.';
+            }} finally {{
+                sendButton.disabled = false;
+                sendButton.textContent = 'Enviar';
+                input.focus();
+            }}
+        }}
+
+        function appendMessage(html, sender) {{
+            const div = document.createElement('div');
+            div.className = `msg ${{sender}}`;
+            div.innerHTML = html;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+            return div;
         }}
 
         async function openHistoryModal() {{
-            historyModal.style.display = 'flex';
-            modalHistoryBody.innerHTML = 'Cargando registros...';
+            document.getElementById('historyModal').style.display = 'flex';
+            const modalBody = document.getElementById('modalHistoryBody');
+            modalBody.innerHTML = 'Cargando registros...';
             try {{
                 const res = await fetch('/history');
                 const data = await res.json();
-                modalHistoryBody.innerHTML = '';
+                modalBody.innerHTML = '';
                 if (!data.history || data.history.length === 0) {{
-                    modalHistoryBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados todavía.</em>';
+                    modalBody.innerHTML = '<em style="color: #94a3b8;">No hay registros guardados todavía.</em>';
                     return;
                 }}
                 data.history.forEach(item => {{
@@ -382,10 +453,10 @@ def home():
                         <div class="history-role">${{item.role.toUpperCase()}}</div>
                         <div>${{item.content.replace(/<br>/g, '\\n')}}</div>
                     `;
-                    modalHistoryBody.appendChild(div);
+                    modalBody.appendChild(div);
                 }});
             }} catch(e) {{
-                modalHistoryBody.innerHTML = 'Error al cargar el historial.';
+                modalBody.innerHTML = 'Error al cargar el historial.';
             }}
         }}
 
@@ -394,8 +465,6 @@ def home():
         }}
 
         function showFileName() {{
-            const fileInput = document.getElementById('fileInput');
-            const fileNameDisplay = document.getElementById('fileNameDisplay');
             if (fileInput.files.length > 0) {{
                 fileNameDisplay.textContent = '📎 ' + fileInput.files[0].name;
                 fileNameDisplay.style.display = 'block';
@@ -428,9 +497,12 @@ def clear_history():
 async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
+        err = "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."
         save_to_db("user", instruction)
-        save_to_db("assistant", "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render.")
-        return RedirectResponse(url="/", status_code=303)
+        save_to_db("assistant", err)
+        def err_gen():
+            yield err
+        return StreamingResponse(err_gen(), media_type="text/plain")
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
@@ -460,7 +532,6 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     )
     
     messages = [{"role": "system", "content": system_instruction}]
-    
     for h in db_history[:-1]:
         role = "user" if h["role"] == "user" else "assistant"
         messages.append({"role": role, "content": h["content"]})
@@ -484,7 +555,8 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     payload = {
         "model": model_to_use,
         "messages": messages,
-        "temperature": 0.3
+        "temperature": 0.3,
+        "stream": True
     }
 
     headers = {
@@ -494,26 +566,30 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         "Content-Type": "application/json"
     }
 
-    ai_text = "⚠️ Error de respuesta."
-    try:
-        response = requests.post(url, json=payload, headers=headers, timeout=45)
-        res_data = response.json()
+    def event_generator():
+        full_response = ""
+        try:
+            resp = requests.post(url, json=payload, headers=headers, stream=True, timeout=45)
+            for line in resp.iter_lines():
+                if line:
+                    line_str = line.decode('utf-8')
+                    if line_str.startswith('data: '):
+                        data_str = line_str[6:]
+                        if data_str == '[DONE]':
+                            break
+                        try:
+                            obj = json.loads(data_str)
+                            delta = obj.get('choices', [{}])[0].get('delta', {}).get('content', '')
+                            if delta:
+                                full_response += delta
+                                yield delta
+                        except Exception:
+                            pass
+        except Exception as e:
+            err_text = f"⚠️ Error de conexión: {str(e)}"
+            full_response += err_text
+            yield err_text
         
-        if "error" in res_data:
-            error_msg = res_data["error"].get("message", "Error desconocido en OpenRouter")
-            ai_text = f"⚠️ Nota de sistema: {error_msg}"
-        elif "choices" in res_data and len(res_data["choices"]) > 0:
-            ai_text = res_data["choices"][0]["message"]["content"]
-        else:
-            ai_text = f"Respuesta inesperada: {str(res_data)}"
-    except Exception as e:
-        ai_text = f"⚠️ Error de conexión: {str(e)}"
-            
-    ai_reply = ai_text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    ai_reply = ai_reply.replace("\n", "<br>")
-    ai_reply = re.sub(r'```([a-zA-Z]*)(.*?)```', r'<pre><code>\2</code></pre>', ai_reply, flags=re.DOTALL)
-    ai_reply = ai_reply.replace("&lt;br&gt;", "<br>")
+        save_to_db("assistant", full_response)
 
-    save_to_db("assistant", ai_reply)
-
-    return RedirectResponse(url="/", status_code=303)
+    return StreamingResponse(event_generator(), media_type="text/plain")
