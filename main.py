@@ -6,9 +6,9 @@ import re
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.7")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.8")
 
-DB_FILE = "mary_memory_v7.db"
+DB_FILE = "mary_memory_v8.db"
 
 def init_db():
     try:
@@ -77,7 +77,7 @@ def home():
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Mary - Neural Engine Pro v6.7</title>
+        <title>Mary - Neural Engine Pro v6.8</title>
         <style>
             :root {
                 --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -92,7 +92,7 @@ def home():
                 padding: 0;
                 display: flex;
                 flex-direction: column;
-                height: 100dvh; /* Altura dinámica real para móviles */
+                height: 100dvh;
                 overflow: hidden;
             }
             header {
@@ -162,8 +162,7 @@ def home():
                 border: 1px solid rgba(52, 211, 153, 0.2);
                 white-space: pre-wrap;
             }
-            /* Formulario contenedor para asegurar interactividad total en móviles */
-            form.input-container {
+            .input-container {
                 background: rgba(15, 23, 42, 0.98);
                 padding: 10px 15px;
                 display: flex;
@@ -314,7 +313,7 @@ def home():
     </head>
     <body>
         <header>
-            <h1>⚡ Mary Pro v6.7</h1>
+            <h1>⚡ Mary Pro v6.8</h1>
             <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
         </header>
 
@@ -322,17 +321,16 @@ def home():
             <div class="msg mary">¡Hola, Jaime! Soy Mary, tu mentora de negocio. ¿En qué puedo ayudarte?</div>
         </div>
 
-        <!-- Usamos un formulario nativo para garantizar el envío en móviles -->
-        <form class="input-container" onsubmit="handleSend(event)">
+        <div class="input-container">
             <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
             <div class="input-row">
                 <label class="file-upload-btn" title="Adjuntar">
                     📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
                 </label>
                 <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off">
-                <button type="submit" class="send-btn" id="sendButton">Enviar</button>
+                <button type="button" class="send-btn" id="sendButton" onclick="sendMsg()">Enviar</button>
             </div>
-        </form>
+        </div>
 
         <div id="historyModal">
             <div class="modal-content">
@@ -357,6 +355,13 @@ def home():
             const fileNameDisplay = document.getElementById('fileNameDisplay');
             const historyModal = document.getElementById('historyModal');
             const modalHistoryBody = document.getElementById('modalHistoryBody');
+
+            input.addEventListener('keypress', (e) => { 
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    sendMsg();
+                }
+            });
 
             async function loadHistory() {
                 try {
@@ -411,8 +416,7 @@ def home():
                 }
             }
 
-            async function handleSend(event) {
-                event.preventDefault();
+            async function sendMsg() {
                 const text = input.value.trim();
                 const file = fileInput.files[0];
                 if (!text && !file) return;
