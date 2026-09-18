@@ -6,9 +6,9 @@ import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.14")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.15")
 
-DB_FILE = "mary_memory_v14.db"
+DB_FILE = "mary_memory_v15.db"
 
 def init_db():
     try:
@@ -83,7 +83,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.14</title>
+    <title>Mary - Neural Engine Pro v6.15</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -118,8 +118,13 @@ def home():
             background: linear-gradient(to right, #34d399, #60a5fa);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            cursor: pointer;
         }
-        .btn-history {
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-nav {
             background: rgba(16, 185, 129, 0.2);
             color: #34d399;
             border: 1px solid rgba(16, 185, 129, 0.4);
@@ -128,6 +133,69 @@ def home():
             font-size: 0.8rem;
             cursor: pointer;
         }
+        .btn-nav:hover {
+            background: rgba(16, 185, 129, 0.4);
+        }
+        
+        /* Vistas de la aplicación */
+        .view-container {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            max-width: 750px;
+            width: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        .view-container.active {
+            display: flex;
+        }
+
+        /* Vista Inicio / General */
+        #homeView {
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            text-align: center;
+            gap: 20px;
+        }
+        .home-card {
+            background: linear-gradient(145deg, #1e293b, #0f172a);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            border-radius: 16px;
+            padding: 25px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .home-card h2 {
+            margin-top: 0;
+            color: #34d399;
+            font-size: 1.3rem;
+        }
+        .home-card p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+        .home-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .btn-primary-action {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        /* Vista Chat */
         #chat {
             flex: 1;
             overflow-y: auto;
@@ -135,9 +203,7 @@ def home():
             display: flex;
             flex-direction: column;
             gap: 12px;
-            max-width: 750px;
             width: 100%;
-            margin: 0 auto;
             box-sizing: border-box;
         }
         .msg {
@@ -158,25 +224,13 @@ def home():
             color: white;
             align-self: flex-end;
         }
-        pre {
-            background: #05070c;
-            padding: 10px;
-            border-radius: 8px;
-            color: #34d399;
-            overflow-x: auto;
-            font-family: monospace;
-            border: 1px solid rgba(52, 211, 153, 0.2);
-            white-space: pre-wrap;
-        }
         .input-container {
             background: rgba(15, 23, 42, 0.98);
             padding: 10px 15px;
             display: flex;
             flex-direction: column;
             gap: 6px;
-            max-width: 750px;
             width: 100%;
-            margin: 0 auto;
             box-sizing: border-box;
             border-top: 2px solid rgba(16, 185, 129, 0.3);
             flex-shrink: 0;
@@ -235,6 +289,8 @@ def home():
             padding-left: 2px;
             display: none;
         }
+
+        /* Modal Historial */
         #historyModal {
             display: none;
             position: fixed;
@@ -330,29 +386,49 @@ def home():
 </head>
 <body>
     <header>
-        <h1>⚡ Mary Pro v6.14</h1>
-        <button class="btn-history" type="button" onclick="openHistoryModal()">📜 Historial</button>
+        <h1 onclick="switchView('home')">⚡ Mary Pro v6.15</h1>
+        <div class="header-actions">
+            <button class="btn-nav" type="button" onclick="switchView('home')">🏠 Inicio</button>
+            <button class="btn-nav" type="button" onclick="startNewChat()">➕ Nuevo Chat</button>
+            <button class="btn-nav" type="button" onclick="openHistoryModal()">📜 Historial</button>
+        </div>
     </header>
 
-    <div id="chat">
-        __CHAT_CONTENT__
-    </div>
-
-    <div class="input-container">
-        <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
-        <div class="input-row">
-            <label class="file-upload-btn" title="Adjuntar">
-                📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
-            </label>
-            <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off" autofocus>
-            <button type="button" class="send-btn" id="sendButton" onclick="sendMsg()">Enviar</button>
+    <!-- VISTA INICIO / GENERAL -->
+    <div id="homeView" class="view-container active">
+        <div class="home-card">
+            <h2>Panel de Control</h2>
+            <p>Bienvenida general de Mary, tu mentora de negocio e IA autónoma.</p>
+            <div class="home-btn-group">
+                <button class="btn-primary-action" type="button" onclick="switchView('chat')">💬 Ir al Chat Actual</button>
+                <button class="btn-nav" type="button" onclick="startNewChat()" style="padding: 12px;">➕ Iniciar Nuevo Chat</button>
+                <button class="btn-nav" type="button" onclick="openHistoryModal()" style="padding: 12px;">📜 Ver Historial de Conversación</button>
+            </div>
         </div>
     </div>
 
+    <!-- VISTA CHAT ACTIVO -->
+    <div id="chatView" class="view-container">
+        <div id="chat">
+            __CHAT_CONTENT__
+        </div>
+        <div class="input-container">
+            <div id="fileNameDisplay">📎 Archivo adjunto seleccionado</div>
+            <div class="input-row">
+                <label class="file-upload-btn" title="Adjuntar">
+                    📁 <input type="file" id="fileInput" accept="image/*,text/*,.py,.txt,.csv" onchange="showFileName()">
+                </label>
+                <input type="text" id="userInput" placeholder="Escribe tu instrucción..." autocomplete="off">
+                <button type="button" class="send-btn" id="sendButton" onclick="sendMsg()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL HISTORIAL -->
     <div id="historyModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>📜 Historial (Toca para restaurar)</h3>
+                <h3>📜 Historial (Toca para cargar)</h3>
                 <button class="close-modal" type="button" onclick="closeHistoryModal()">&times;</button>
             </div>
             <div class="modal-body" id="modalHistoryBody">
@@ -360,12 +436,32 @@ def home():
             </div>
             <div class="modal-footer">
                 <button class="btn-danger" type="button" onclick="clearMemory()">Borrar Todo</button>
-                <button class="btn-history" type="button" onclick="closeHistoryModal()">Cerrar</button>
+                <button class="btn-nav" type="button" onclick="closeHistoryModal()">Cerrar</button>
             </div>
         </div>
     </div>
 
     <script>
+        function switchView(viewName) {
+            document.getElementById('homeView').classList.remove('active');
+            document.getElementById('chatView').classList.remove('active');
+
+            if (viewName === 'home') {
+                document.getElementById('homeView').classList.add('active');
+            } else if (viewName === 'chat') {
+                document.getElementById('chatView').classList.add('active');
+                const chat = document.getElementById('chat');
+                chat.scrollTop = chat.scrollHeight;
+            }
+        }
+
+        async function startNewChat() {
+            if (confirm('¿Deseas iniciar un nuevo chat limpiando la sesión actual?')) {
+                await fetch('/clear', { method: 'POST' });
+                location.reload();
+            }
+        }
+
         const chat = document.getElementById('chat');
         chat.scrollTop = chat.scrollHeight;
 
@@ -464,12 +560,13 @@ def home():
                     div.innerHTML = `
                         <div class="history-role">${item.role.toUpperCase()}</div>
                         <div>${item.content}</div>
-                        <div class="history-hint">👆 Toca para cargar en el cuadro de texto</div>
+                        <div class="history-hint">👆 Toca para cargar en el chat</div>
                     `;
                     
                     div.onclick = () => {
-                        input.value = cleanContent.replace(/<[^>]*>?/gm, ''); // Limpia tags HTML básicos al restaurar
+                        input.value = cleanContent.replace(/<[^>]*>?/gm, '');
                         closeHistoryModal();
+                        switchView('chat');
                         input.focus();
                     };
                     
