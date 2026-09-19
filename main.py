@@ -1,14 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 import requests
 import os
 import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.17")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.18")
 
-DB_FILE = "mary_memory_v17.db"
+DB_FILE = "mary_memory_v18.db"
 
 def init_db():
     try:
@@ -71,7 +71,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.17</title>
+    <title>Mary - Neural Engine Pro v6.18</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -361,7 +361,7 @@ def home():
 </head>
 <body>
     <header>
-        <h1 onclick="switchView('home')">⚡ Mary Pro v6.17</h1>
+        <h1 onclick="switchView('home')">⚡ Mary Pro v6.18</h1>
         <div class="header-actions">
             <button class="btn-nav" type="button" onclick="switchView('home')">🏠 Inicio</button>
             <button class="btn-nav" type="button" onclick="startNewChatSession()">➕ Nuevo Chat</button>
@@ -468,7 +468,7 @@ def home():
             formData.append('instruction', text || "Analiza este archivo adjunto.");
             if (file) formData.append('file', file);
 
-            const maryDiv = appendMessage('', 'mary');
+            const maryDiv = appendMessage('Pensando...', 'mary');
 
             try {
                 const response = await fetch('/build', {
@@ -476,28 +476,21 @@ def home():
                     body: formData
                 });
 
-                if (!response.ok) throw new Error('Error en el servidor');
-
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder('utf-8');
-                let rawText = '';
-
-                while (true) {
-                    const { value, done } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    rawText += chunk;
-                    
-                    let formatted = rawText.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const data = await response.json();
+                
+                if (!response.ok || data.error) {
+                    maryDiv.innerHTML = '⚠️ Error: ' + (data.error || 'No se pudo procesar la solicitud.');
+                } else {
+                    let formatted = data.reply.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                     formatted = formatted.replace(/\\n/g, '<br>');
                     maryDiv.innerHTML = formatted;
-                    chat.scrollTop = chat.scrollHeight;
                 }
             } catch (err) {
-                maryDiv.innerHTML = '⚠️ Error de conexión en tiempo real.';
+                maryDiv.innerHTML = '⚠️ Error de conexión con el servidor.';
             } finally {
                 sendButton.disabled = false;
                 sendButton.textContent = 'Enviar';
+                chat.scrollTop = chat.scrollHeight;
                 input.focus();
             }
         }
@@ -534,8 +527,6 @@ def home():
                         <div class="history-hint">👆 Toca para continuar el tema con Mary</div>
                     `;
                     
-                    // Al tocar un elemento del historial, se coloca en el input Y se envía automáticamente
-                    // para seguir interactuando con Mary sobre ese punto de la base de datos.
                     div.onclick = async () => {
                         const textToResume = cleanContent.replace(/<[^>]*>?/gm, '');
                         closeHistoryModal();
@@ -578,12 +569,10 @@ def get_history():
 async def build_program(instruction: str = Form(""), file: UploadFile = File(None)):
     api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
-        err = "⚠️ Error: Falta configurar la variable OPENROUTER_API_KEY en Render."
+        err_msg = "Falta configurar la variable OPENROUTER_API_KEY en Render."
         save_to_db("user", instruction)
-        save_to_db("assistant", err)
-        def err_gen():
-            yield err
-        return StreamingResponse(err_gen(), media_type="text/plain")
+        save_to_db("assistant", f"⚠️ Error: {err_msg}")
+        return JSONResponse(status_code=400, content={"error": err_msg})
     
     url = "https://openrouter.ai/api/v1/chat/completions"
     
@@ -591,16 +580,19 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     image_payload = None
 
     if file and file.filename:
-        contents = await file.read()
-        mime = file.content_type or ""
-        if "image" in mime:
-            encoded_image = base64.b64encode(contents).decode('utf-8')
-            image_payload = f"data:{mime};base64,{encoded_image}"
-        else:
-            try:
-                file_content_text = f"\n\n--- Contenido del archivo {file.filename} ---\n" + contents.decode('utf-8')
-            except:
-                file_content_text = f"\n\n[Archivo recibido: {file.filename}]"
+        try:
+            contents = await file.read()
+            mime = file.content_type or ""
+            if "image" in mime:
+                encoded_image = base64.b64encode(contents).decode('utf-8')
+                image_payload = f"data:{mime};base64,{encoded_image}"
+            else:
+                try:
+                    file_content_text = f"\n\n--- Contenido del archivo {file.filename} ---\n" + contents.decode('utf-8')
+                except:
+                    file_content_text = f"\n\n[Archivo recibido: {file.filename}]"
+        except Exception as e:
+            print(f"Error leyendo archivo: {e}")
 
     full_user_input = instruction + file_content_text
     save_to_db("user", full_user_input)
@@ -636,8 +628,7 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     payload = {
         "model": model_to_use,
         "messages": messages,
-        "temperature": 0.3,
-        "stream": True
+        "temperature": 0.3
     }
 
     headers = {
@@ -647,30 +638,18 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
         "Content-Type": "application/json"
     }
 
-    def event_generator():
-        full_response = ""
-        try:
-            resp = requests.post(url, json=payload, headers=headers, stream=True, timeout=45)
-            for line in resp.iter_lines():
-                if line:
-                    line_str = line.decode('utf-8')
-                    if line_str.startswith('data: '):
-                        data_str = line_str[6:]
-                        if data_str == '[DONE]':
-                            break
-                        try:
-                            obj = json.loads(data_str)
-                            delta = obj.get('choices', [{}])[0].get('delta', {}).get('content', '')
-                            if delta:
-                                full_response += delta
-                                yield delta
-                        except Exception:
-                            pass
-        except Exception as e:
-            err_text = f"⚠️ Error de conexión: {str(e)}"
-            full_response += err_text
-            yield err_text
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=50)
+        res_data = resp.json()
         
-        save_to_db("assistant", full_response)
-
-    return StreamingResponse(event_generator(), media_type="text/plain")
+        if resp.status_code != 200:
+            error_message = res_data.get("error", {}).get("message", "Error desconocido de OpenRouter")
+            full_response = f"⚠️ Error en API externa: {error_message}"
+        else:
+            full_response = res_data.get("choices", [{}])[0].get("message", {}).get("content", "Sin respuesta de la IA.")
+            
+    except Exception as e:
+        full_response = f"⚠️ Error de conexión con el proveedor de IA: {str(e)}"
+    
+    save_to_db("assistant", full_response)
+    return {"reply": full_response}
