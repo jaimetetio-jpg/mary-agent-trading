@@ -6,9 +6,9 @@ import json
 import sqlite3
 import base64
 
-app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.18")
+app = FastAPI(title="Mary Autonomous AI - Neural Engine Pro", version="6.19")
 
-DB_FILE = "mary_memory_v18.db"
+DB_FILE = "mary_memory_v19.db"
 
 def init_db():
     try:
@@ -71,7 +71,7 @@ def home():
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mary - Neural Engine Pro v6.18</title>
+    <title>Mary - Neural Engine Pro v6.19</title>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #090d16 0%, #1a1c29 50%, #0f172a 100%);
@@ -361,7 +361,7 @@ def home():
 </head>
 <body>
     <header>
-        <h1 onclick="switchView('home')">⚡ Mary Pro v6.18</h1>
+        <h1 onclick="switchView('home')">⚡ Mary Pro v6.19</h1>
         <div class="header-actions">
             <button class="btn-nav" type="button" onclick="switchView('home')">🏠 Inicio</button>
             <button class="btn-nav" type="button" onclick="startNewChatSession()">➕ Nuevo Chat</button>
@@ -600,16 +600,19 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     db_history = get_db_history()
     
     system_instruction = (
-        "Eres Mary, la mentora de negocio de Jaime. Te diriges a él siempre por su nombre (Jaime) con un tono profesional, estratégico y enfocado en el éxito de sus proyectos y operaciones. "
-        "Posees memoria completa de todas las iteraciones previas guardadas en la base de datos. Analiza con precisión cualquier contexto pasado, imagen o archivo."
+        "Eres Mary, la mentora de negocio de Jaime. Te diriges a él siempre por su nombre (Jaime) con un tono profesional, estratégico y enfocado en el éxito de sus proyectos y operaciones."
     )
     
     messages = [{"role": "system", "content": system_instruction}]
-    for h in db_history[:-1]:
+    
+    # Tomamos solo los últimos 6 mensajes para evitar sobrepasar límites de tokens en OpenRouter
+    recent_history = db_history[-7:] if len(db_history) > 7 else db_history
+    
+    for h in recent_history[:-1]:
         role = "user" if h["role"] == "user" else "assistant"
         messages.append({"role": role, "content": h["content"]})
         
-    last_content = db_history[-1]["content"]
+    last_content = recent_history[-1]["content"]
     if image_payload:
         messages.append({
             "role": "user",
@@ -628,6 +631,7 @@ async def build_program(instruction: str = Form(""), file: UploadFile = File(Non
     payload = {
         "model": model_to_use,
         "messages": messages,
+        "max_tokens": 1000,
         "temperature": 0.3
     }
 
